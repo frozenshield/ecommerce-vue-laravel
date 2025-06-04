@@ -93,16 +93,19 @@ class ProductsController extends Controller
         }
             
     
- 
-
     /**
      * Remove the specified resource from storage.
      */
     public function destroy($id)
     {
+        if(auth()->id() != $id && auth()->user()->isAdmin()){
+            return response()->json(['message' => 'Unauthenticated'], 404);
+        }
+
         $deleted = DB::delete("DELETE FROM products WHERE product_id = ?", [$id]);
         return  $deleted
-            ? response()->json(null, 204)
+            ? response()->json(['message' => 'Product Deleted Succesfully'], 200)
             : response()->json(['error' => 'Not Found'], 404);
     }
 }
+

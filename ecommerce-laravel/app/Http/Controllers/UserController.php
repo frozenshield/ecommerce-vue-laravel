@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\DB;
 
 class UserController extends Controller
 {
@@ -16,10 +17,10 @@ class UserController extends Controller
     public function index()
     {
         if (!auth()->user()->isAdmin()){
-            return reponse()->json(['error' => 'Unauthorized'], 403);
+            return response()->json(['error' => 'Unauthorized'], 403);
         }
 
-        $users = DB::select("SELECT id, name, email, role FROM users");
+        $users = DB::select("SELECT user_id, username, email, role FROM users");
         return response()->json($users);
     }
 
@@ -29,9 +30,10 @@ class UserController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'user_name' => 'required|string|max:255',
+            'username' => 'required|string|max:255',
             'email' => 'required|email|max:255|unique:users,email',
-            'password' => 'required|string'
+            'password' => 'required|string',
+            'role' => 'sometimes|in:customer,seller'
         ]);
 
         if ($validator->fails()) {
@@ -40,17 +42,17 @@ class UserController extends Controller
 
         $hashedPassword = Hash::make($request->password);
 
-        $user = DB::table('users')->insert([
+            DB::table('users')->insert([
             'username' => $request->input('username'),
             'email' => $request->input('email'),
             'password' => $hashedPassword,
-            'role' => $request->input('role', 'user'), // Default role is 'user'
+            'role' => $request->input('customer','seller'), // Default role is 'user'
             'created_at' => now(),
             'updated_at' => now(),
         ]);
 
         $userId = DB::getPdo()->lastInsertId();
-        $newUser = DB::selectOne("SELECT user_name, email, role FROM users WHERE user_id = ?", [$userId]);
+        $newUser = DB::selectOne("SELECT username, email, role FROM users WHERE user_id = ?", [$userId]);
         return response()->json([
             'user' => $newUser,
             'message' => 'User created successfully'
@@ -62,7 +64,7 @@ class UserController extends Controller
      */
     public function show($id)
     {
-        $user = DB::selectOne("SELECT user_name, email, role FROM users WHERE user_id = ?", [$id]);
+        $user = DB::selectOne("SELECT username, email, role FROM users WHERE user_id = ?", [$id]);
         return $user ? response()->json($user) : response()->json(['error' => 'Not Found'], 404); 
     }
 
@@ -147,5 +149,38 @@ class UserController extends Controller
         return response()->json(['message' => 'User Deleted Successfully']);
         
 
+    }
+
+    public function login(Request $request)
+    {
+        $credentials = $request->validate([
+            'username' => 'required|string|max:100',
+            'password' => 'required',
+        ]);
+
+        $user = DB::selectOne("SELECT * FROM users WHERE username = ?", [$credentials['username']]);
+
+        if (!$user || !Hash::check($credentials['password'], $user->password)){
+            return response()->json(['message' => 'Invalid User Account'], 403);
+        }
+
+        $userModel = \App\Models\User::where('username', $credentials['username'])->first();
+        $token = $userModel->createToken('api-token')->plainTextToken;
+
+        return response()->json([
+            'user' => $userModel,
+            'role' => $userModel->role,
+            'token' => $token,
+            'message' => 'Login Success'
+        ]);
+
+    }
+
+
+    public function logout(Request $request)
+    {
+        $request->user()->currentAccessToken()->delete();
+
+        return response()->json(['message' => 'logout successfully']);
     }
 }
