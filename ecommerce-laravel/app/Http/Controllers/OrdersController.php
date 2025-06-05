@@ -30,6 +30,7 @@ class OrdersController extends Controller
             'order_date' => 'required|date',
             'status' => 'required|in:pending,completed,cancelled',
             'total_amount' => 'required|numeric|min:0',
+            
         ]);
 
         if ($validator->fails()) {
@@ -76,9 +77,43 @@ class OrdersController extends Controller
     {
         $user_id = auth()->user();
 
-        $order = DB::selectOne("SELECT * FROM orders WHERE order_id = ?", [$id])
+        $order = DB::selectOne("SELECT * FROM orders WHERE order_id = ?", [$id]);
+        if(!$order){
+            return response()->json(['message' => 'No order to update'], 404);
+        }
 
+        if(!$user_id->isAdmin() && $order->user_id != $user_id->user_id){
+            return response()->json(['message' => 'No orders to update']);
+        }
 
+        $validator = Validate::make($request->all(), [
+            'order_date' => 'sometimes|required|date',
+            'status' => 'sometimes|required|in:pending,completed,cancelled',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
+        }
+
+        $data = $validator->validated();
+
+        $updated = DB::update(
+            "UPDATE orders SET "
+            . (isset($data['order_date']) ? "order_date = :order_date, " : "")
+            . (isset($data['status']) ? "status = :status, " : "")
+            . "updated_at = :updated_at WHERE order_id = :order_id",
+            array_merge(
+                array_intersect_key($data, array_flip(['order_date', 'status', 'total_amount'])),
+                [
+                    'updated_at' => now(),
+                    'order_id' => $id,
+                ]
+                ));
+
+        if ($updated) {
+            $updateOrder = DB::selectOne("SELECT * FROM orders where order_id = ?", [$id]);
+            return $updateOrder ? response()->json($updateOrder) : response()->json(['message' => 'No changes made or update failed'], 404);
+        }
     }
 
     /**

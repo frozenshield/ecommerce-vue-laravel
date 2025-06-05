@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CartController;
 use App\Http\Controllers\OrdersController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ProductsController;
@@ -39,5 +40,16 @@ Route::prefix('orders')->group(function () {
         Route::get('/{id}', [OrdersController::class, 'show']);
         Route::put('/{id}', [OrdersController::class, 'update']);
         Route::delete('/{id}', [OrdersController::class, 'destroy']);
+    });
+});
+
+
+Route::prefix('cart')->group(function () {
+    Route::middleware('auth:sanctum')->Group(function () {
+        Route::get('/', [CartController::class, 'showAllCart']);
+        Route::get('/{id}', [CartController::class, 'showSpecificCart']);
+        Route::post('/', [CartController::class, 'addToCart']);
+        Route::put('/{id}', [CartController::class, 'editQuantity']);
+        Route::delete('/{id}', [CartController::class, 'removeToCart']);
     });
 });
