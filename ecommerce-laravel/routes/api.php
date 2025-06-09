@@ -4,6 +4,7 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\OrdersController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ProductsController;
+use App\Http\Controllers\ReviewsController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -45,11 +46,22 @@ Route::prefix('orders')->group(function () {
 
 
 Route::prefix('cart')->group(function () {
-    Route::middleware('auth:sanctum')->Group(function () {
+    Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [CartController::class, 'showAllCart']);
-        Route::get('/{id}', [CartController::class, 'showSpecificCart']);
+        Route::get('/{cart_id}', [CartController::class, 'showSpecificCart']);
         Route::post('/', [CartController::class, 'addToCart']);
-        Route::put('/{id}', [CartController::class, 'editQuantity']);
-        Route::delete('/{id}', [CartController::class, 'removeToCart']);
+        Route::put('/{cart_id}', [CartController::class, 'editQuantity']);
+        Route::delete('/{cart_id}', [CartController::class, 'removeToCart']);
+    });
+});
+
+
+Route::prefix('reviews')->group(function () {
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('/', [ReviewsController::class, 'getAllReviews']);
+        Route::post('/', [ReviewsController::class, 'createReview']);
+        Route::get('/{review_id}', [ReviewsController::class, 'getSpecificReview']);
+        Route::put('/{review_id}', [ReviewsController::class, 'editReview']);
+        Route::delete('/{review_id}', [ReviewsController::class, 'deleteReview']);
     });
 });

@@ -74,7 +74,7 @@ class CartController extends Controller
             ]);
 
             $cartAdded = DB::selectOne("SELECT * FROM cart_items WHERE cart_id = ?", [$cartID]);
-            return $cartAdded ? response()->json(['Message' => 'Successfully Added to Cart'], 202) : response()->json(['message' => 'Failed to Add to Cart', 404]);
+            return $cartAdded ? response()->json(['Message' => 'Successfully Added to Cart'], 202) : response()->json(['message' => 'Failed to Add to Cart'], 404);
         } 
        
     }
@@ -82,7 +82,7 @@ class CartController extends Controller
     /**
      * Display the specified resource.
      */
-    public function showSpecificCart($id)
+    public function showSpecificCart($cart_id)
     {
         $user_id = auth()->user();
 
@@ -91,18 +91,18 @@ class CartController extends Controller
             return response()->json(['message' , 'Unauthorized'], 401);
         }
 
-        $cart_items = DB::select("SELECT * FROM cart_items WHERE cart_id = ?", [$id]);
+        $cart_items = DB::select("SELECT * FROM cart_items WHERE cart_id = ?", [$cart_id]);
         return $cart_items ? response()->json($cart_items) : reponse()->json(['message' => 'Not Found'], 404);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function editQuantity(Request $request, $id)
+    public function editQuantity(Request $request, $cart_id)
     {
         $user = auth()->user();
 
-        $cart_user = DB::selectOne("SELECT * FROM cart_items WHERE cart_id = ?", [$id]);
+        $cart_user = DB::selectOne("SELECT * FROM cart_items WHERE cart_id = ?", [$cart_id]);
         if(!$cart_user){
             return response()->json(['message' => 'Empty Cart'], 404);
         }
@@ -122,7 +122,7 @@ class CartController extends Controller
         
         $update_quantity = DB::update("UPDATE cart_items SET
             quantity = ?, updated_at =  ? WHERE cart_id = ?",
-            [$request->input('quantity'), now(), $id]);
+            [$request->input('quantity'), now(), $cart_id]);
 
         return $update_quantity ? response()->json([$update_quantity], 200) : response()->json(['message' => 'Failed to Update'], 404);
 
@@ -131,11 +131,11 @@ class CartController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function removeToCart($id)
+    public function removeToCart($cart_id)
     {
         $user_id = auth()->user();
 
-        $cart_user = DB::selectOne("SELECT * FROM cart_items WHERE cart_id = ?", [$id]);
+        $cart_user = DB::selectOne("SELECT * FROM cart_items WHERE cart_id = ?", [$cart_id]);
         if(!$cart_user){
             return response()->json(['message' => 'Empty Cart'], 404);
         }
@@ -144,7 +144,7 @@ class CartController extends Controller
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
-        $item_remove = DB::delete("DELETE FROM cart_items WHERE cart_id = ?", [$id]);
+        $item_remove = DB::delete("DELETE FROM cart_items WHERE cart_id = ?", [$cart_id]);
         return $item_remove ? response()->json(['message' => 'Item Removed'], 200) : response()->json(['message' => 'Not Found'], 404);
     }
 }
