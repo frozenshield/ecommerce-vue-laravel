@@ -98,7 +98,7 @@ class ProductsController extends Controller
      */
     public function destroy($id)
     {
-        if(auth()->id() != $id && auth()->user()->isAdmin()){
+        if(auth()->id()->isSeller() != $id && auth()->user()->isAdmin()){
             return response()->json(['message' => 'Unauthenticated'], 404);
         }
 

@@ -4,6 +4,7 @@
             <NavBarTop />
             <div class="border-b-2 border-gray-200"></div>
             <NavBarBottom />
+            <HeroBanner />
         </div>
        
 
@@ -15,3 +16,7 @@
         </section>
     </div>
 </template>
+
+<script setup>
+import HeroBanner from '@/components/HeroBanner.vue';
+</script>

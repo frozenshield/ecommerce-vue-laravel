@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ProfilesController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\OrdersController;
 use App\Http\Controllers\UserController;
@@ -63,5 +64,32 @@ Route::prefix('reviews')->group(function () {
         Route::get('/{review_id}', [ReviewsController::class, 'getSpecificReview']);
         Route::put('/{review_id}', [ReviewsController::class, 'editReview']);
         Route::delete('/{review_id}', [ReviewsController::class, 'deleteReview']);
+    });
+});
+
+Route::prefix('user_address')->group(function () {
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('/', [UserAddressController::class, 'getAllAddress']);
+        Route::post('/', [UserAddressController::class, 'addNewAddress']);
+        Route::put('/{user_address_id}', [UserAddressController::class, 'editAddress']);
+        Route::delete('/{user_address_id}', [UserAddressController::class, 'deleteAddress']);
+    });
+});
+
+Route::prefix('profile')->group(function () {
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('/', [ProfilesController::class, 'getMyProfile']);
+        Route::post('/', [ProfilesController::class, 'addProfile']);
+        Route::put('/{profile_id}', [ProfilesController::class, 'editProfile']);
+    });
+});
+
+Route::prefix('product_category')->group(function () {
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('/', [ProductCategoryController::class, 'getAllCategory']);
+        Route::post('/', [ProductCategoryController::class, 'addCategory']);
+        Route::get('/{product_category_id}', [ProductCategoryController::class, 'getSpecificCategory']);
+        Route::put('/{product_category_id}', [ProductCategoryController::class, 'editCategory']);
+        Route::delete('/{product_category_id}', [ProductCategoryController::class, 'deleteCategory']);
     });
 });

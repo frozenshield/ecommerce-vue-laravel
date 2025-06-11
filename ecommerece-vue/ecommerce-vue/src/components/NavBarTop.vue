@@ -26,16 +26,27 @@
                     <i class="pi pi-shopping-cart"></i>
                     <span v-if="cartCount > 0" class="absolute -top-2 -right-2 bg-black text-white text-xs rounded-full px-1">{{ cartCount }}</span> 
                 </div>
+
                 <div class="relative">
                     <i class="pi pi-user" @click="toggleUserPanel" ref="userIcon"></i>
                     <OverlayPanel ref="userPanel">
                         <div class="p-4 w-40 flex flex-col space-y-2">
-                            <router-link to="/login" class="flex items-center text-black hover:text-orange-500 transition-colors">
-                                <i class="pi pi-sign-in mr-2"></i> Login
-                            </router-link>
-                            <router-link to="/register" class="flex items-center text-black hover:text-orange-500 transition-colors">
-                                <i class="pi pi-user-plus mr-2"></i> Register
-                            </router-link>
+                             <template v-if="auth.isAuthenticated">
+                                <router-link to="/profile" class="flex items-center text-black hover:text-orange-500 transition-colors">
+                                     <i class="pi pi-user mr-2"></i> Profile
+                                </router-link>
+                                <button @click="handleLogout" class="flex items-center text-black hover:text-orange-500 transition-colors">
+                                     <i class="pi pi-sign-out mr-2"></i> Logout
+                                </button>
+                            </template>
+                            <template v-else>
+                                <router-link to="/login" class="flex items-center text-black hover:text-orange-500 transition-colors">
+                                    <i class="pi pi-sign-in mr-2"></i> Login
+                                </router-link>
+                                <router-link to="/register" class="flex items-center text-black hover:text-orange-500 transition-colors">
+                                    <i class="pi pi-user-plus mr-2"></i> Register
+                                </router-link>
+                            </template>
                         </div>
                     </OverlayPanel>
                 </div>    
@@ -46,11 +57,15 @@
 
 <script setup>
 import { ref } from 'vue';
+import { useAuthStore } from '../stores/auth';
 import { useRouter } from 'vue-router';
 import InputText from 'primevue/inputtext';
 import Dropdown from 'primevue/dropdown';
 import Button from 'primevue/button';
 import OverlayPanel from 'primevue/overlaypanel';
+
+const auth = useAuthStore();
+const router = useRouter();
 
 const userIcon = ref();
 const userPanel = ref();
@@ -71,6 +86,11 @@ const onSearch = () => {
 
 function toggleUserPanel(event) {
     userPanel.value.toggle(event);
+}
+
+const handleLogout = () => {
+    auth.logout();
+    router.push('/');
 }
 
 </script>
