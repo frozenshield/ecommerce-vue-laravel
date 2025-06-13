@@ -1,34 +1,40 @@
 <template>
-    <div class="bg-yellow-400 text-white px-4 md:px-10 py-4 shadow-md border-b border-gray-200">
-        <div class="flex justify-between items-center">
+    <div class="bg-yellow-500 text-white px-4 md:px-10 py-4 shadow-md border-b border-gray-200">
+        <div class="flex justify-between items-center max-w-7xl mx-auto">
             
-            <div class="text-3xl font-bold">
+            <div class="text-3xl font-bold shrink-0 mr-4">
                 <span class="text-black">russ</span><span class="text-white">fury</span>
             </div>
 
-            <div class="hidden md:flex items-center bg-white rounded overflow-hidden w-1/2">
+            <div class="hidden md:flex items-center bg-white rounded overflow-hidden w-full max-w-xl mx-4">
                 <Dropdown
                     :options="categories"
                     v-model="selectedCategory"
                     optionLabel="label"
                     class="w-32 border-r"
                 />
-                <InputText v-model="searchTerm" placeholder="I'm shopping for.." class="flex-1 px-3 py-2" />
-                <Button icon="pi pi-search" class="p-button-warning px-4" @click="onSearch" />
+                <InputText 
+                     v-model="searchTerm"
+                     placeholder="I'm shopping for.." 
+                     class="flex-1 px-3 py-2 border-none focus:ring-0"  />
+                <Button 
+                     icon="pi pi-search" 
+                     class="p-button-warning px-4 hover:bg-yellow-500" 
+                     @click="onSearch" />
            </div>
 
-           <div class="flex space-x-4 items-center">
+           <div class="flex space-x-6 items-center">
                 <div class="relative">
-                    <i class="pi pi-heart"></i>
-                    <span v-if="wishlistCount > 0" class="absolute -top-2 -right-2 bg-black text-white text-xs rounded-full px-1">{{ wishlistCount }}</span> 
+                    <i class="pi pi-heart mx-2 hover:text-yellow-200"></i>
+                    <span v-if="wishlistCount > 0" class="absolute -top-2 -right-2 bg-black text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{{ wishlistCount }}</span> 
                 </div>
                 <div class="relative">
-                    <i class="pi pi-shopping-cart"></i>
-                    <span v-if="cartCount > 0" class="absolute -top-2 -right-2 bg-black text-white text-xs rounded-full px-1">{{ cartCount }}</span> 
+                    <i class="pi pi-shopping-cart mx-2 hover:text-yellow-200"></i>
+                    <span v-if="cartCount > 0" class="absolute -top-2 -right-2 bg-black text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{{ cartCount }}</span> 
                 </div>
 
                 <div class="relative">
-                    <i class="pi pi-user" @click="toggleUserPanel" ref="userIcon"></i>
+                    <i class="pi pi-user mx-2" @click="toggleUserPanel" ref="userIcon"></i>
                     <OverlayPanel ref="userPanel">
                         <div class="p-4 w-40 flex flex-col space-y-2">
                              <template v-if="auth.isAuthenticated">
@@ -97,7 +103,8 @@ const handleLogout = () => {
 
 <style scoped>
 .pi {
-    font-size: 1.25rem;
+    font-size: 1.75rem;
     cursor: pointer;
+    color: black;
 }
 </style>
