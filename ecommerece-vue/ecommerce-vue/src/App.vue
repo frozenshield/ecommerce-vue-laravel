@@ -1,7 +1,10 @@
 <template>
-  <NavBarTop />
-  <NavBarBottom />
-  <router-view />
+    <div style="position:relative; z-index:100;">
+        <NavBarTop />
+        <NavBarBottom />
+        <Footer />  
+    </div>
+    <router-view />
 </template>
 
 <script setup>

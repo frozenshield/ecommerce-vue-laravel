@@ -1,6 +1,6 @@
 <template>
     <div class="bg-white py-8">
-        <div class="max-w-7xl mx-auto px-4 border border-gray-300 rounded">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-center divide-x divide-gray-200">
                
                 <div class="flex flex-col items-center p-4">

@@ -3,39 +3,25 @@
         <div class="max-w-7xl mx-auto">
             <!-- header -->
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold text-gray-900">Deal of the day</h2>
-                <div class="flex items-center space-x-2">
-                        <span class="text-sm text-gray-500">End in:</span>
-                        <div class="flex space-x-1 font-mono">
-                            <span class="bg-gray-100 px-2 py-1 rounded">00</span>
-                            <span>:</span>
-                            <span class="bg-gray-100 px-2 py-1 rounded">00</span>
-                            <span>:</span>
-                            <span class="bg-gray-100 px-2 py-1 rounded">00</span>
-                            <span>:</span>
-                            <span class="bg-gray-100 px-2 py-1 rounded">00</span>
-                        </div>       
-                </div>
+                <h2 class="text-2xl font-bold text-gray-900">Feature Products</h2>
+                
             </div>
 
             <!-- Product Carousel -->
-               <div class="relative z-10">
-                <Carousel
-                    :value="products"
-                    :numVisible="4"
-                    :numScroll="1"
-                    :circular="true"
-                    :showIndicators="true"
-                    :responsiveOptions="
-                      [
-                        { breakpoint: '1024px', numVisible: 3, numScroll: 1 },
-                        { breakpoint: '768px', numVisible: 2, numScroll: 1 },
-                        { breakpoint: '480px', numVisible: 1, numScroll: 1 }
-                      ]
-                    "
-                >
-             
-            
+            <Carousel
+                :value="products"
+                :numVisible="4"
+                :numScroll="1"
+                :circular="true"
+                :showIndicators="true"
+                :responsiveOptions="
+                  [
+                    { breakpoint: '1024px', numVisible: 3, numScroll: 1 },
+                    { breakpoint: '768px', numVisible: 2, numScroll: 1 },
+                    { breakpoint: '480px', numVisible: 1, numScroll: 1 }
+                  ]
+                "
+            >
                 <template #item="slotProps">
                 <div class=" border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow mx-2">
                     
@@ -116,8 +102,6 @@
                 </div>
                 </template>
             </Carousel>
-
-            </div>
         </div>
     </div>
 </template>
