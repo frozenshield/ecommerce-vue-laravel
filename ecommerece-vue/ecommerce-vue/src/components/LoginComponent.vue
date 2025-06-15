@@ -56,6 +56,13 @@
             Register now
           </router-link>
         </div>
+
+        <div class="text-center text-sm">
+          <span class="text-gray-600">Are you a seller?</span>
+          <router-link to="/adminlogin" class="ml-1 text-yellow-500 hover:text-yellow-600 font-medium">
+            Login here
+          </router-link>
+        </div>
       </div>
 
       <div class="relative">
@@ -96,7 +103,7 @@
 </template>
 
 <script setup lang="ts">
-import Footer from '../components/Footer.vue';
+import Footer from './Footers.vue';
 import { ref } from 'vue';
 import axios from 'axios'
 import InputText from 'primevue/inputtext';

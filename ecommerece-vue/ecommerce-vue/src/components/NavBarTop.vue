@@ -3,7 +3,7 @@
         <div class="flex justify-between items-center max-w-7xl mx-auto">
             
             <div class="text-3xl font-bold shrink-0 mr-4">
-                <span class="text-black">russ</span><span class="text-white">fury</span>
+                <span class="text-black">player One </span><span class="text-white">fury</span>
             </div>
 
             <div class="hidden md:flex items-center bg-white rounded overflow-hidden w-full max-w-xl mx-4">
