@@ -1,4 +1,5 @@
 <template>
+  <NavBarTop />
   <div class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
     <div class="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-md">
       <div class="text-center">
@@ -99,18 +100,16 @@
     </div>
     <Toast />
   </div>
-<Footer />
+
 </template>
 
 <script setup lang="ts">
-import Footer from './Footers.vue';
 import { ref } from 'vue';
 import axios from 'axios'
 import InputText from 'primevue/inputtext';
 import Password from 'primevue/password';
 import Checkbox from 'primevue/checkbox';
 import Button from 'primevue/button';
-import { useRouter } from 'vue-router';
 import Toast from 'primevue/toast'
 import { useToast } from 'primevue/usetoast'
 
@@ -118,7 +117,6 @@ const username = ref('');
 const password = ref('');
 const rememberMe = ref(false);
 const error = ref('')
-const router = useRouter();
 const toast = useToast()
 
 async function onLogin() {

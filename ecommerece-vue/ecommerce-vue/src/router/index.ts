@@ -3,6 +3,10 @@ import LoginComponent from '../components/LoginComponent.vue'
 import LandingPage from '../components/LandingPage.vue'
 import RegisterPage from '../components/RegisterComponent.vue'
 import AdminLogin from '../components/admin/AdminLogin.vue'
+import AdminLandingPage from '../components/admin/AdminLandingPage.vue'
+// main.ts
+import 'primeicons/primeicons.css'
+
 // import RegisterComponent from '../components/RegisterComponent.vue' // Uncomment if you have this
 
 const routes = [
@@ -26,6 +30,12 @@ const routes = [
     name: 'AdminLogin',
     component: AdminLogin,
   },
+  {
+    path: '/adminlanding',
+    name: 'AdminLanding',
+    component: AdminLandingPage
+  }
+
 ]
 
 const router = createRouter({

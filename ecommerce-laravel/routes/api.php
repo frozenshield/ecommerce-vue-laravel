@@ -6,6 +6,7 @@ use App\Http\Controllers\OrdersController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ProductsController;
 use App\Http\Controllers\ReviewsController;
+use App\Http\Controllers\WishlistController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -91,5 +92,13 @@ Route::prefix('product_category')->group(function () {
         Route::get('/{product_category_id}', [ProductCategoryController::class, 'getSpecificCategory']);
         Route::put('/{product_category_id}', [ProductCategoryController::class, 'editCategory']);
         Route::delete('/{product_category_id}', [ProductCategoryController::class, 'deleteCategory']);
+    });
+});
+
+Route::prefix('wishlist')->group(function () {
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('/', [WishlistController::class, 'getAllWishlist']);
+        Route::post('/', [WishlistController::class, 'addWishlist']);
+        Route::delete('/{wishlistId}', [WishlistController::class, 'removeWishlist']);
     });
 });

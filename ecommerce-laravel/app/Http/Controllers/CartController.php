@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Redis;
 
 class CartController extends Controller
 {
@@ -13,20 +14,30 @@ class CartController extends Controller
      */
     public function showAllCart()
     {
-        $user_id = auth()->user();
+        $user = auth()->user();
+        $userId = $user->user_id;
 
-        $cart_user = DB::selectOne("SELECT * FROM cart_items");
+        $cachedCart = Redis::get("cart:$userId");
+
+        if($cachedCart){
+            return response()->json(json_decode($cachedCart, true));
+        }
+
+        $cart_user = DB::selectOne("SELECT * FROM cart_items WHERE user_id = ?", [$userId]);
+        
         if(!$cart_user){
             return response()->json(['message' => 'Empty Cart'], 404);
         }
 
-        if(!auth()->user()->isAdmin() && $cart_user->user_id != $user_id->user_id){
-            return response()->json(['message' => 'Unauthorized'], 403);
+        if(!auth()->user()->isAdmin() && $cart_user->user_id != $user->user_id){
+            return response()->json(['message' => 'Unauthorized'], 401);
         }
 
-        $cart = DB::select("SELECT * FROM cart_items WHERE user_id = ?", [$user_id->user_id]);
+        $cart = DB::select("SELECT * FROM cart_items WHERE user_id = ?", [$userId]);
             
-        return $cart ? response()->json($cart) : response()->json(['message' => 'Not Found'], 404);
+        Redis::setex("cart:$userId", 6600, json_encode($cart));
+
+        return response()->json($cart);
         
     }
 
@@ -77,6 +88,8 @@ class CartController extends Controller
             return $cartAdded ? response()->json(['Message' => 'Successfully Added to Cart'], 202) : response()->json(['message' => 'Failed to Add to Cart'], 404);
         } 
        
+        Redis::del("cart:" . $user_id->user_id);
+        Redis::del("cart_item:" . $cartItem->cart_id);
     }
 
     /**
@@ -84,15 +97,25 @@ class CartController extends Controller
      */
     public function showSpecificCart($cart_id)
     {
-        $user_id = auth()->user();
+        $admin = auth()->user()->isAdmin();
+        $user = auth()->user();
 
-
-        if(!auth()->isAdmin() && $cart_user->user_id != $user_id->user_id){
+        $userId = $user->user_id;
+        
+        $cachedId = Redis::get("cart_item:$cart_id");
+        if($cachedId){
+            return response()->json(json_decode($cachedId, true));
+        }
+     
+        if(!$admin &&  !$user->user_id){
             return response()->json(['message' , 'Unauthorized'], 401);
         }
 
         $cart_items = DB::select("SELECT * FROM cart_items WHERE cart_id = ?", [$cart_id]);
-        return $cart_items ? response()->json($cart_items) : reponse()->json(['message' => 'Not Found'], 404);
+        
+        Redis::setex("cart_item:$cart_id", 6600, json_encode($cart_items));
+
+        return response()->json($cart_items);
     }
 
     /**
@@ -126,6 +149,9 @@ class CartController extends Controller
 
         return $update_quantity ? response()->json([$update_quantity], 200) : response()->json(['message' => 'Failed to Update'], 404);
 
+        Redis::del("cart" . $user->user_id);
+        Redis::del("cart_item" . $cart_id->cart_id);
+    
     }
 
     /**
@@ -146,5 +172,8 @@ class CartController extends Controller
 
         $item_remove = DB::delete("DELETE FROM cart_items WHERE cart_id = ?", [$cart_id]);
         return $item_remove ? response()->json(['message' => 'Item Removed'], 200) : response()->json(['message' => 'Not Found'], 404);
+    
+        Redis::del("cart" . $user_id->user_id);
+        Redis::del("cart" . $cart_id->cart_id);
     }
 }
