@@ -4,6 +4,14 @@ import LandingPage from '../components/LandingPage.vue'
 import RegisterPage from '../components/RegisterComponent.vue'
 import AdminLogin from '../components/admin/AdminLogin.vue'
 import AdminLandingPage from '../components/admin/AdminLandingPage.vue'
+import AdminProducts from '../components/admin/AdminProducts.vue'
+import AdminOrders from '../components/admin/AdminOrders.vue'
+import AdminCustomers from '../components/admin/AdminCustomers.vue'
+import AdminCoupons from '../components/admin/AdminCoupons.vue'
+import AdminCategories from '../components/admin/AdminCategories.vue'
+import AdminSettings from '../components/admin/AdminCategories.vue'
+
+
 // main.ts
 import 'primeicons/primeicons.css'
 
@@ -31,9 +39,41 @@ const routes = [
     component: AdminLogin,
   },
   {
-    path: '/adminlanding',
-    name: 'AdminLanding',
-    component: AdminLandingPage
+    path: '/admin',
+    name: 'Admin',
+    component: AdminLandingPage,
+    children: [
+      {
+        path: 'products',
+        name: 'AdminProducts',
+        component: AdminProducts,
+      },
+      {
+        path: 'orders',
+        name: 'AdminOrders',
+        component: AdminOrders,
+      },
+      {
+        path: 'customers',
+        name: 'AdminCustomers',
+        component: AdminCustomers,
+      },
+      {
+        path: 'coupons',
+        name: 'AdminCoupons',
+        component: AdminCoupons,
+      },
+      {
+        path: 'categories',
+        name: 'AdminCategories',
+        component: AdminCategories,
+      },
+      {
+        path: 'settings',
+        name: 'AdminSettings',
+        component: AdminSettings,
+      },
+    ]
   }
 
 ]

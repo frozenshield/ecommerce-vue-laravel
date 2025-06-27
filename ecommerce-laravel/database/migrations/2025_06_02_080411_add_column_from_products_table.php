@@ -16,7 +16,7 @@ return new class extends Migration
             ALTER TABLE products
             ADD COLUMN image_url VARCHAR(255) DEFAULT NULL
             AFTER product_stock
-        ");
+            ");
     }
 
     /**

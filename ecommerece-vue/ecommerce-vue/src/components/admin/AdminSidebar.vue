@@ -18,11 +18,21 @@
             <ul class="space-y-3">
                 <li v-for="item in menuItems" :key="item.label">
                     <router-link
-                    :to="item.route"
-                    class="flex items-center text-2xl gap-3 text-gray-700 hover:text-yellow-500 transition-colors"
+                      :to="item.route"
+                      v-slot="{ isActive, isExactActive }"
+                      :exact="item.route === '/admin'"
                     >
-                    <i :class="item.icon" class="text-lg"></i>
-                    <span>{{ item.label }}</span>
+                      <div
+                        :class="[
+                          'flex items-center text-base text-2xl gap-3 transition-colors',
+                          (item.route === '/admin' ? isExactActive : isActive)
+                            ? 'text-yellow-500 font-semibold'
+                            : 'text-gray-700 hover:text-yellow-500'
+                        ]"
+                      >
+                        <i :class="item.icon" class="text-lg"></i>
+                        <span>{{ item.label }}</span>
+                      </div>
                     </router-link>
                 </li>
             </ul>
@@ -43,13 +53,13 @@ import { ref } from 'vue'
 
 
 const menuItems = ref([
-  { label: 'Dashboard', route: '/landingpage', icon: 'pi pi-home' },
-  { label: 'Products', route: '/products', icon: 'pi pi-box' },
-  { label: 'Orders', route: '/orders', icon: 'pi pi-shopping-cart' },
-  { label: 'Customers', route: '/customers', icon: 'pi pi-users' },
-  { label: 'Coupons', route: '/coupons', icon: 'pi pi-tags' },
-  { label: 'Categories', route: '/categories', icon: 'pi pi-list' },
-  { label: 'Settings', route: '/settings', icon: 'pi pi-cog' }
+  { label: 'Dashboard', route: '/admin', icon: 'pi pi-home' },
+  { label: 'Products', route: '/admin/products', icon: 'pi pi-box' },
+  { label: 'Orders', route: '/admin/orders', icon: 'pi pi-shopping-cart' },
+  { label: 'Customers', route: '/admin/customers', icon: 'pi pi-users' },
+  { label: 'Coupons', route: '/admin/coupons', icon: 'pi pi-tags' },
+  { label: 'Categories', route: '/admin/categories', icon: 'pi pi-list' },
+  { label: 'Settings', route: '/admin/settings', icon: 'pi pi-cog' }
 ])
 
 </script>
