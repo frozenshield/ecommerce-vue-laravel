@@ -7,6 +7,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\ProductsController;
 use App\Http\Controllers\ReviewsController;
 use App\Http\Controllers\WishlistController;
+use App\Http\Controllers\ProductCategoryController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -88,9 +89,10 @@ Route::prefix('profile')->group(function () {
 Route::prefix('product_category')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [ProductCategoryController::class, 'getAllCategory']);
-        Route::post('/', [ProductCategoryController::class, 'addCategory']);
+        Route::post('/', [ProductCategoryController::class, 'addProductCategory']);
         Route::get('/{product_category_id}', [ProductCategoryController::class, 'getSpecificCategory']);
         Route::put('/{product_category_id}', [ProductCategoryController::class, 'editCategory']);
+        Route::patch('/{product_category_id}/toggle-status', [ProductCategoryController::class, 'toggleCategoryStatus']);
         Route::delete('/{product_category_id}', [ProductCategoryController::class, 'deleteCategory']);
     });
 });

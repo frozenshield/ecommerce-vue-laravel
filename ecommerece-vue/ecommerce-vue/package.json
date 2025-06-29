@@ -23,6 +23,7 @@
     "vue3-leaflet": "^1.0.50"
   },
   "devDependencies": {
+    "@types/node": "^24.0.7",
     "@types/vue-router": "^2.0.0",
     "@vitejs/plugin-vue": "^5.2.3",
     "@vue/tsconfig": "^0.7.0",

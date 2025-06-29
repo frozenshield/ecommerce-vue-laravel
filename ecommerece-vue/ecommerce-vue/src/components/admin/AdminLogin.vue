@@ -50,10 +50,12 @@
             <Button 
               type="submit"
               label="Sign in" 
+              :loading="loading"
+              :disabled="loading"
               class="w-full flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded mt-4"
             >
-              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-              Sign in
+              <svg v-if="!loading" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              {{ loading ? 'Signing in...' : 'Sign in' }}
             </Button>
           </div>
         </form>
@@ -74,6 +76,8 @@
 <script setup lang="ts"> 
 import { ref } from 'vue';
 import axios from 'axios';
+import { useRouter } from 'vue-router';
+import { useAuthStore } from '../../stores/auth';
 import InputText from 'primevue/inputtext';
 import Password from 'primevue/password';
 import Checkbox from 'primevue/checkbox';
@@ -91,28 +95,55 @@ const username = ref('');
 const password = ref('');
 const rememberMe = ref(false);
 const error = ref('')
+const loading = ref(false)
 const toast = useToast()
+const router = useRouter()
+const authStore = useAuthStore()
 
 async function handleLogin() {
   error.value = ''
+  loading.value = true
+  
   try {
     const response = await axios.post('http://127.0.0.1:8000/api/login', {
       username: username.value,
       password: password.value,
     })
-    localStorage.setItem('token', response.data.token)
-    toast.add({ severity: 'success',
-                summary: 'Success', 
-                detail: 'Login Successful',
-                life:3000
-              })
+    
+    // Store the authentication token and user data
+    const token = response.data.token
+    const userData = response.data.user || {
+      id: response.data.id || 1,
+      name: response.data.name || username.value,
+      email: response.data.email || `${username.value}@admin.com`
+    }
+    
+    // Update auth store and localStorage
+    authStore.login(token, userData)
+    
+    // Show success message
+    toast.add({ 
+      severity: 'success',
+      summary: 'Success', 
+      detail: 'Login Successful - Redirecting to Admin Dashboard',
+      life: 3000
+    })
+    
+    // Navigate to admin dashboard after a short delay to show the success message
+    setTimeout(() => {
+      router.push('/admin')
+    }, 1000)
+    
   } catch (err: any) {
     error.value = err.response?.data?.message || 'Login failed'
-    toast.add({ severity: 'error', 
-                summary: 'Error', 
-                detail: error.value, 
-                life:3000
-              })
+    toast.add({ 
+      severity: 'error', 
+      summary: 'Error', 
+      detail: error.value, 
+      life: 3000
+    })
+  } finally {
+    loading.value = false
   }
 }
 </script>

@@ -29,7 +29,13 @@
         </div>
         <!-- Right: Search Bar -->
         <div class="flex items-center border border-gray-300 rounded-sm px-2 py-2 max-w-xs w-full bg-white">
-            <input type="text" placeholder="Search product" class="flex-1 border-none outline-none text-sm bg-transparent" />
+            <input 
+                type="text" 
+                placeholder="Search product" 
+                v-model="searchQuery"
+                @input="handleSearch"
+                class="flex-1 border-none outline-none text-sm bg-transparent" 
+            />
             <i class="pi pi-search text-gray-400"></i>
         </div>
     </div>
@@ -37,53 +43,81 @@
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <DataTable 
             :value="products" 
-            :paginator="false"
+            :paginator="true"
+            :rows="10"
+            :totalRecords="totalProducts"
+            :lazy="true"
+            :loading="loading"
+            @page="onPageChange"
             tableStyle="min-width: 50rem"
             class="p-datatable-sm"
+            paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
+            :rowsPerPageOptions="[10, 25, 50]"
         >
-            <Column field="id" header="ID" class="text-left">
+            <Column field="product_id" header="Product ID" class="text-left">
                 <template #body="slotProps">
-                    <span class="text-blue-600 font-medium text-sm">{{ slotProps.data.id }}</span>
+                    <span class="text-blue-600 font-medium text-sm">{{ slotProps.data.product_id }}</span>
                 </template>
             </Column>
             
-            <Column field="name" header="Name" class="text-left">
+            <Column field="product_name" header="Product Name" class="text-left">
                 <template #body="slotProps">
-                    <span class="text-gray-900 text-sm">{{ slotProps.data.name }}</span>
+                    <span class="text-gray-900 text-sm font-medium">{{ slotProps.data.product_name }}</span>
                 </template>
             </Column>
             
-            <Column field="sku" header="SKU" class="text-left">
+            <Column field="product_description" header="Description" class="text-left">
                 <template #body="slotProps">
-                    <span class="text-gray-500 text-sm">{{ slotProps.data.sku }}</span>
+                    <span class="text-gray-500 text-sm">{{ 
+                        slotProps.data.product_description 
+                            ? (slotProps.data.product_description.length > 50 
+                                ? slotProps.data.product_description.substring(0, 50) + '...' 
+                                : slotProps.data.product_description)
+                            : 'No description'
+                    }}</span>
                 </template>
             </Column>
             
-            <Column field="stock" header="Stock" class="text-left">
+            <Column field="product_price" header="Price" class="text-left">
+                <template #body="slotProps">
+                    <span class="text-gray-900 text-sm font-semibold">${{ slotProps.data.product_price }}</span>
+                </template>
+            </Column>
+            
+            <Column field="product_stock" header="Stock" class="text-left">
                 <template #body="slotProps">
                     <Tag 
-                        :value="slotProps.data.stock" 
-                        :severity="slotProps.data.stock === 'Stock' ? 'success' : 'danger'"
+                        :value="slotProps.data.product_stock > 0 ? 'In Stock' : 'Out of Stock'" 
+                        :severity="slotProps.data.product_stock > 0 ? 'success' : 'danger'"
                         class="text-xs font-semibold"
                     />
+                    <span class="ml-2 text-xs text-gray-500">({{ slotProps.data.product_stock }})</span>
                 </template>
             </Column>
             
-            <Column field="price" header="Price" class="text-left">
+            <Column field="image_url" header="Image" class="text-left">
                 <template #body="slotProps">
-                    <span class="text-gray-900 text-sm">{{ slotProps.data.price }}</span>
+                    <div class="flex items-center">
+                        <img 
+                            v-if="slotProps.data.image_url || slotProps.data.img_url" 
+                            :src="slotProps.data.image_url || slotProps.data.img_url" 
+                            :alt="slotProps.data.product_name"
+                            class="w-10 h-10 object-cover rounded border border-gray-200"
+                            @error="handleImageError"
+                        />
+                        <div 
+                            v-else 
+                            class="w-10 h-10 bg-gray-100 rounded border border-gray-200 flex items-center justify-center"
+                        >
+                            <i class="pi pi-image text-gray-400 text-sm"></i>
+                        </div>
+                    </div>
                 </template>
             </Column>
             
-            <Column field="categories" header="Categories" class="text-left">
+            <Column field="created_at" header="Created Date" class="text-left">
                 <template #body="slotProps">
-                    <span class="text-gray-500 text-sm">{{ slotProps.data.categories }}</span>
-                </template>
-            </Column>
-            
-            <Column field="date" header="Date" class="text-left">
-                <template #body="slotProps">
-                    <span class="text-gray-500 text-sm">{{ slotProps.data.date }}</span>
+                    <span class="text-gray-500 text-sm">{{ formatDate(slotProps.data.created_at) }}</span>
                 </template>
             </Column>
             
@@ -100,74 +134,309 @@
                 </template>
             </Column>
         </DataTable>
-    </div>
-
-    <div class="flex items-center justify-between mt-6">
-        <div class="text-sm text-gray-700">
-            Show 10 in 30 items.
+        
+        <!-- Custom pagination info -->
+        <div class="flex items-center justify-between mt-4 px-2">
+            <div class="text-sm text-gray-600">
+                Showing {{ ((currentPage - 1) * 10) + 1 }} to {{ Math.min(currentPage * 10, totalProducts) }} of {{ totalProducts }} products
+            </div>
+            <div class="text-sm text-gray-500">
+                Page {{ currentPage }} of {{ Math.ceil(totalProducts / 10) }}
+            </div>
         </div>
-        <Paginator 
-            :rows="10" 
-            :totalRecords="30" 
-            :first="(currentPage - 1) * 10"
-            @page="onPageChange"
-            template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink"
-            class="border-none bg-transparent"
-        >
-            <template #firstpagelinkicon>
-                <i class="pi pi-angle-double-left text-gray-500"></i>
-            </template>
-            <template #prevpagelinkicon>
-                <i class="pi pi-chevron-left text-gray-500"></i>
-            </template>
-            <template #nextpagelinkicon>
-                <i class="pi pi-chevron-right text-gray-500"></i>
-            </template>
-            <template #lastpagelinkicon>
-                <i class="pi pi-angle-double-right text-gray-500"></i>
-            </template>
-        </Paginator>
     </div>
 
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import Button from 'primevue/button'
-import Paginator from 'primevue/paginator'
 
 const router = useRouter()
 const currentPage = ref(1)
+const totalProducts = ref(0)
+const loading = ref(false)
+const searchQuery = ref('')
+let searchTimeout: number
 
 const goToAddProduct = () => {
     router.push({ name: 'AdminAddProduct' })
 }
 
-const onPageChange = (event: any) => {
-    currentPage.value = event.page + 1
+// Handle search with debouncing
+const handleSearch = () => {
+    clearTimeout(searchTimeout)
+    searchTimeout = setTimeout(() => {
+        currentPage.value = 1 // Reset to first page when searching
+        fetchProducts(1, searchQuery.value)
+    }, 500) // 500ms delay
 }
+
+// Handle pagination change
+const onPageChange = (event: any) => {
+    const newPage = event.page + 1 // PrimeVue pages are 0-indexed
+    console.log('Page changed to:', newPage)
+    currentPage.value = newPage
+    fetchProducts(newPage, searchQuery.value)
+}
+
+// Fetch products from backend API
+const fetchProducts = async (page: number = 1, search: string = '') => {
+    loading.value = true
+    console.log(`Fetching products - Page: ${page}, Search: "${search}"`)
+    
+    try {
+        // Get auth token from localStorage
+        const token = localStorage.getItem('token') // Changed from 'admin_token' to 'token'
+        
+        if (!token) {
+            console.error('No auth token found')
+            // Redirect to login if no token
+            router.push('/adminlogin')
+            return
+        }
+        
+        // Build API URL with search parameter
+        let apiUrl = `http://127.0.0.1:8000/api/admin/products?page=${page}&per_page=10`
+        if (search.trim()) {
+            apiUrl += `&search=${encodeURIComponent(search.trim())}`
+        }
+        
+        console.log('API URL:', apiUrl)
+        
+        // Real API integration with Laravel backend
+        const response = await fetch(apiUrl, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        })
+        
+        console.log('API Response status:', response.status)
+        
+        if (!response.ok) {
+            if (response.status === 401) {
+                console.error('Unauthorized - redirecting to login')
+                localStorage.removeItem('token')
+                router.push('/adminlogin')
+                return
+            }
+            throw new Error(`HTTP error! status: ${response.status}`)
+        }
+        
+        const result = await response.json()
+        console.log('Products API response:', result)
+        
+        // Handle Laravel pagination response
+        if (result.data && Array.isArray(result.data)) {
+            products.value = result.data
+            totalProducts.value = result.total || 0
+            currentPage.value = result.current_page || page
+            console.log(`Loaded ${result.data.length} products, total: ${result.total}, current page: ${result.current_page}`)
+        } else {
+            console.warn('Unexpected API response structure:', result)
+            throw new Error('Invalid API response structure')
+        }
+        
+    } catch (error) {
+        console.error('Error fetching products:', error)
+        
+        // Fallback to sample data for development
+        console.log('Using fallback sample data')
+        const itemsPerPage = 10
+        const startIndex = (page - 1) * itemsPerPage
+        const endIndex = startIndex + itemsPerPage
+        
+        // Apply search filter to sample data
+        let filteredProducts = allProducts
+        if (search.trim()) {
+            const searchLower = search.toLowerCase()
+            filteredProducts = allProducts.filter(product => 
+                product.product_name.toLowerCase().includes(searchLower) ||
+                product.product_description?.toLowerCase().includes(searchLower)
+            )
+        }
+        
+        totalProducts.value = filteredProducts.length
+        products.value = filteredProducts.slice(startIndex, endIndex)
+        console.log(`Fallback data - Page ${page}, showing ${products.value.length} of ${totalProducts.value} products`)
+    } finally {
+        loading.value = false
+    }
+}
+
+// Load products when component mounts
+onMounted(() => {
+    fetchProducts(1)
+})
 
 const handleActionMenu = (product: any) => {
     console.log('Action menu clicked for product:', product)
     // Add your action menu logic here
 }
 
-const products = ref([
+// Format date for display
+const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A'
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric', 
+        year: 'numeric' 
+    })
+}
+
+// Handle image loading errors
+const handleImageError = (event: Event) => {
+    const target = event.target as HTMLImageElement
+    if (target) {
+        target.style.display = 'none'
+    }
+}
+
+// Define product interface
+interface Product {
+    product_id: number
+    product_name: string
+    product_description: string | null
+    product_price: number
+    product_stock: number
+    image_url: string | null
+    img_url: string | null
+    created_at: string
+}
+
+const products = ref<Product[]>([])
+
+// Sample data for fallback/development
+const allProducts: Product[] = [
     {
-        id: 'ABH-0',
-        name: 'Herschel Leather Duffle Bag In Brown Color',
-        sku: 'AB12345789-1',
-        stock: 'Stock',
-        price: '£125.30',
-        categories: 'Bags,Clothing & Apparel',
-        date: '2019/11/06'
+        product_id: 1,
+        product_name: 'Herschel Leather Duffle Bag In Brown Color',
+        product_description: 'Premium quality leather duffle bag perfect for travel and everyday use. Features multiple compartments and durable construction.',
+        product_price: 125.30,
+        product_stock: 15,
+        image_url: '/images/products/product05.png',
+        img_url: null,
+        created_at: '2024-12-25T10:30:00Z'
     },
-   
-])
+    {
+        product_id: 2,
+        product_name: 'Wireless Gaming Headphones',
+        product_description: 'High-quality wireless headphones with noise cancellation and premium sound quality for gaming.',
+        product_price: 89.99,
+        product_stock: 0,
+        image_url: '/images/products/headphone1.png',
+        img_url: null,
+        created_at: '2024-12-24T14:15:00Z'
+    },
+    {
+        product_id: 3,
+        product_name: 'Smartphone Case Premium',
+        product_description: 'Protective case for smartphones with shock absorption and wireless charging compatibility.',
+        product_price: 24.99,
+        product_stock: 50,
+        image_url: '/images/products/phone1.png',
+        img_url: null,
+        created_at: '2024-12-23T09:45:00Z'
+    },
+    {
+        product_id: 4,
+        product_name: 'Bluetooth Speaker Portable',
+        product_description: 'Compact portable speaker with excellent sound quality and long battery life.',
+        product_price: 67.50,
+        product_stock: 8,
+        image_url: '/images/products/accessory1.png',
+        img_url: null,
+        created_at: '2024-12-22T16:20:00Z'
+    },
+    {
+        product_id: 5,
+        product_name: 'Gaming Console Controller',
+        product_description: null,
+        product_price: 45.00,
+        product_stock: 25,
+        image_url: '/images/products/console1.png',
+        img_url: null,
+        created_at: '2024-12-21T11:30:00Z'
+    },
+    {
+        product_id: 6,
+        product_name: 'Wireless Mouse Pro',
+        product_description: 'Ergonomic wireless mouse with precision tracking and long battery life.',
+        product_price: 32.99,
+        product_stock: 40,
+        image_url: '/images/products/accessory2.png',
+        img_url: null,
+        created_at: '2024-12-20T08:15:00Z'
+    },
+    {
+        product_id: 7,
+        product_name: 'USB-C Hub Adapter',
+        product_description: 'Multi-port USB-C hub with HDMI, USB 3.0, and power delivery support.',
+        product_price: 49.99,
+        product_stock: 12,
+        image_url: '/images/products/accessory3.png',
+        img_url: null,
+        created_at: '2024-12-19T13:45:00Z'
+    },
+    {
+        product_id: 8,
+        product_name: 'Mechanical Keyboard RGB',
+        product_description: 'Premium mechanical keyboard with RGB backlighting and custom switches.',
+        product_price: 129.99,
+        product_stock: 18,
+        image_url: '/images/products/accessory4.png',
+        img_url: null,
+        created_at: '2024-12-18T10:20:00Z'
+    },
+    {
+        product_id: 9,
+        product_name: 'Wireless Earbuds Pro',
+        product_description: 'Premium wireless earbuds with active noise cancellation and premium sound.',
+        product_price: 199.99,
+        product_stock: 0,
+        image_url: '/images/products/headphone2.png',
+        img_url: null,
+        created_at: '2024-12-17T15:30:00Z'
+    },
+    {
+        product_id: 10,
+        product_name: 'Smartwatch Fitness Tracker',
+        product_description: 'Advanced fitness tracker with heart rate monitoring and GPS.',
+        product_price: 89.99,
+        product_stock: 35,
+        image_url: '/images/products/accessory5.png',
+        img_url: null,
+        created_at: '2024-12-16T09:10:00Z'
+    },
+    {
+        product_id: 11,
+        product_name: 'Portable Power Bank',
+        product_description: 'High-capacity power bank with fast charging and multiple ports.',
+        product_price: 39.99,
+        product_stock: 60,
+        image_url: '/images/products/accessory6.png',
+        img_url: null,
+        created_at: '2024-12-15T14:25:00Z'
+    },
+    {
+        product_id: 12,
+        product_name: 'Webcam HD 1080p',
+        product_description: 'Professional HD webcam with auto-focus and noise reduction.',
+        product_price: 79.99,
+        product_stock: 22,
+        image_url: '/images/products/accessory7.png',
+        img_url: null,
+        created_at: '2024-12-14T11:40:00Z'
+    }
+]
 </script>
 
 <style scoped>

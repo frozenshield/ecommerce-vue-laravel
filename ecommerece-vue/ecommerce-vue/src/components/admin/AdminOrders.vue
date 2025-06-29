@@ -163,7 +163,6 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import InputText from 'primevue/inputtext'
@@ -172,7 +171,6 @@ import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Paginator from 'primevue/paginator'
 
-const router = useRouter()
 
 // Reactive data
 const searchQuery = ref('')

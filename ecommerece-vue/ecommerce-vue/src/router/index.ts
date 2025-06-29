@@ -95,4 +95,25 @@ const router = createRouter({
   routes,
 })
 
+// Route guard for admin authentication
+router.beforeEach((to, _from, next) => {
+  // Check if the route requires authentication (any admin route)
+  if (to.path.startsWith('/admin') && to.path !== '/adminlogin') {
+    const token = localStorage.getItem('token')
+    
+    if (!token) {
+      // No token found, redirect to admin login
+      console.log('No authentication token found, redirecting to admin login')
+      next('/adminlogin')
+      return
+    }
+    
+    // Token exists, allow access
+    next()
+  } else {
+    // Non-admin route or admin login page, allow access
+    next()
+  }
+})
+
 export default router
