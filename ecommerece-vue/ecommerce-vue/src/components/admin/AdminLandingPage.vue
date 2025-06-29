@@ -1,7 +1,7 @@
 <template>
   <div class="flex min-h-screen bg-white">
     <!-- Sidebar Column -->
-    <div class="w-64 bg-gray-800 min-h-screen sticky top-0">
+    <div class="w-64 sticky top-0 h-screen overflow-y-auto">
       <Sidebar />
     </div>
     
@@ -13,10 +13,8 @@
       </div>
       
       <!-- Page Content -->
-      <div class="flex-1 p-5 overflow-auto">
-        <router-view /> <!-- If using Vue Router -->
-        <!-- OR -->
-        <slot></slot> <!-- If using slots -->
+      <div class="flex-1 p-5">
+        <router-view />
       </div>
     </div>
   </div>
