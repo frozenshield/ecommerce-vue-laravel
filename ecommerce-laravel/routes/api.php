@@ -8,6 +8,7 @@ use App\Http\Controllers\ProductsController;
 use App\Http\Controllers\ReviewsController;
 use App\Http\Controllers\WishlistController;
 use App\Http\Controllers\ProductCategoryController;
+use App\Http\Controllers\CouponController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -102,5 +103,13 @@ Route::prefix('wishlist')->group(function () {
         Route::get('/', [WishlistController::class, 'getAllWishlist']);
         Route::post('/', [WishlistController::class, 'addWishlist']);
         Route::delete('/{wishlistId}', [WishlistController::class, 'removeWishlist']);
+    });
+});
+
+Route::prefix('coupon')->group(function () {
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('/', [CouponController::class, 'getAllCoupon']);
+        Route::post('/', [CouponController::class, 'createCoupon']);
+        Route::delete('/{coupon_id}', [CouponController::class, 'deleteCoupon']);
     });
 });

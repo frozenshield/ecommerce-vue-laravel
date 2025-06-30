@@ -10,27 +10,31 @@
                     tableStyle="min-width: 50rem"
                     class="p-datatable-sm"
                 >
-                    <Column field="code" header="Code" class="text-left">
+                    <Column field="coupon_code" header="Coupon Code" class="text-left">
                         <template #body="slotProps">
-                            <span class="text-gray-900 text-sm font-medium">{{ slotProps.data.code }}</span>
+                            <span class="text-gray-900 text-sm font-medium">{{ slotProps.data.coupon_code }}</span>
                         </template>
                     </Column>
                     
-                    <Column field="percent" header="Percent" class="text-left">
+                    <Column field="by_percent" header="By Percent" class="text-left">
                         <template #body="slotProps">
-                            <span class="text-orange-600 text-sm font-medium">{{ slotProps.data.percent }}</span>
+                            <span class="text-orange-600 text-sm font-medium">
+                                {{ slotProps.data.by_percent ? `${slotProps.data.by_percent}%` : '-' }}
+                            </span>
                         </template>
                     </Column>
                     
-                    <Column field="currency" header="Currency" class="text-left">
+                    <Column field="by_currency" header="By Currency" class="text-left">
                         <template #body="slotProps">
-                            <span class="text-gray-900 text-sm">{{ slotProps.data.currency }}</span>
+                            <span class="text-gray-900 text-sm">
+                                {{ slotProps.data.by_currency ? `Php ${slotProps.data.by_currency}` : '-' }}
+                            </span>
                         </template>
                     </Column>
                     
-                    <Column field="createdAt" header="Created at" class="text-left">
+                    <Column field="expired_date" header="Expired Date" class="text-left">
                         <template #body="slotProps">
-                            <span class="text-gray-500 text-sm">{{ slotProps.data.createdAt }}</span>
+                            <span class="text-gray-500 text-sm">{{ slotProps.data.expired_date }}</span>
                         </template>
                     </Column>
                     
@@ -38,7 +42,7 @@
                         <template #body="slotProps">
                             <Tag 
                                 :value="slotProps.data.status" 
-                                :severity="slotProps.data.status === 'Active' ? 'success' : 'secondary'"
+                                :severity="slotProps.data.status === 'active' ? 'success' : 'secondary'"
                                 class="text-xs font-semibold"
                             />
                         </template>
@@ -88,36 +92,40 @@
                     <div class="space-y-2">
                         <label class="text-sm font-medium text-gray-700">Coupon Code</label>
                         <InputText 
-                            v-model="newCoupon.code" 
-                            placeholder="placeholder"
+                            v-model="newCoupon.coupon_code" 
+                            placeholder="Enter coupon code"
                             class="w-full"
-                            :class="{ 'p-invalid': errors.code }"
+                            :class="{ 'p-invalid': errors.coupon_code }"
+                            maxlength="100"
                         />
-                        <small v-if="errors.code" class="text-red-500">{{ errors.code }}</small>
+                        <small v-if="errors.coupon_code" class="text-red-500">{{ errors.coupon_code }}</small>
                     </div>
 
                     <!-- Discount Type -->
                     <div class="space-y-2">
-                        <label class="text-sm font-medium text-gray-700">By Percent</label>
+                        <label class="text-sm font-medium text-gray-700">By Percent (%)</label>
                         <InputNumber 
-                            v-model="newCoupon.percent" 
+                            v-model="newCoupon.by_percent" 
                             placeholder="Enter percentage"
                             suffix="%"
                             :min="0"
-                            :max="100"
+                            :max="99.99"
+                            :maxFractionDigits="2"
                             class="w-full"
                         />
                     </div>
 
                     <!-- Currency Value -->
                     <div class="space-y-2">
-                        <label class="text-sm font-medium text-gray-700">By Currency</label>
+                        <label class="text-sm font-medium text-gray-700">By Currency (Php)</label>
                         <InputNumber 
-                            v-model="newCoupon.currency" 
+                            v-model="newCoupon.by_currency" 
                             mode="currency"
                             currency="USD"
                             locale="en-US"
                             placeholder="Enter amount"
+                            :min="0"
+                            :maxFractionDigits="2"
                             class="w-full"
                         />
                     </div>
@@ -126,9 +134,23 @@
                     <div class="space-y-2">
                         <label class="text-sm font-medium text-gray-700">Expired Date</label>
                         <Calendar 
-                            v-model="newCoupon.expiredDate" 
+                            v-model="newCoupon.expired_date" 
                             placeholder="Select date"
-                            dateFormat="mm/dd/yy"
+                            dateFormat="yy-mm-dd"
+                            :minDate="new Date()"
+                            class="w-full"
+                        />
+                    </div>
+
+                    <!-- Status -->
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-gray-700">Status</label>
+                        <Dropdown 
+                            v-model="newCoupon.status" 
+                            :options="statusOptions"
+                            optionLabel="label"
+                            optionValue="value"
+                            placeholder="Select Status"
                             class="w-full"
                         />
                     </div>
@@ -138,7 +160,7 @@
                         <label class="text-sm font-medium text-gray-700">Description</label>
                         <Textarea 
                             v-model="newCoupon.description" 
-                            placeholder="Enter category description"
+                            placeholder="Enter coupon description"
                             rows="4"
                             class="w-full"
                         />
@@ -177,66 +199,78 @@ import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import Textarea from 'primevue/textarea'
 import Calendar from 'primevue/calendar'
+import Dropdown from 'primevue/dropdown'
 
 const loading = ref(false)
 const totalCoupons = ref(30)
 
 const newCoupon = reactive({
-    code: '',
-    percent: null,
-    currency: null,
-    expiredDate: null,
+    coupon_code: '',
+    by_percent: null,
+    by_currency: null,
+    expired_date: null,
+    status: 'active',
     description: ''
 })
 
 const errors = reactive({
-    code: ''
+    coupon_code: ''
 })
 
-// Sample coupons data from the image
+const statusOptions = [
+    { label: 'Active', value: 'active' },
+    { label: 'Inactive', value: 'inactive' }
+]
+
+// Sample coupons data matching the database schema
 const coupons = ref([
     {
-        code: 'MARTFURY-2020',
-        percent: '10%',
-        currency: '$50.00',
-        createdAt: 'Jul 21, 2020',
-        status: 'Expired'
+        coupon_code: 'MARTFURY-2020',
+        by_percent: 10.00,
+        by_currency: 50.00,
+        expired_date: '2020-07-21',
+        status: 'inactive'
     },
     {
-        code: 'MARTFURY-MID2020',
-        percent: '5%',
-        currency: '$25.00',
-        createdAt: 'Jul 21, 2020',
-        status: 'Expired'
+        coupon_code: 'MARTFURY-MID2020',
+        by_percent: 5.00,
+        by_currency: 25.00,
+        expired_date: '2020-07-21',
+        status: 'inactive'
     },
     {
-        code: 'SUMMERHOT',
-        percent: '7.5%',
-        currency: '$50.00',
-        createdAt: 'Jul 21, 2020',
-        status: 'Expired'
+        coupon_code: 'SUMMERHOT',
+        by_percent: 7.50,
+        by_currency: 50.00,
+        expired_date: '2020-07-21',
+        status: 'inactive'
     },
     {
-        code: 'EXPLORE2020',
-        percent: '3%',
-        currency: '$10.00',
-        createdAt: 'Jul 21, 2020',
-        status: 'Expired'
+        coupon_code: 'EXPLORE2020',
+        by_percent: 3.00,
+        by_currency: 10.00,
+        expired_date: '2020-07-21',
+        status: 'inactive'
     },
     {
-        code: 'LAPTOP2020',
-        percent: '10%',
-        currency: '$50.00',
-        createdAt: 'Jul 21, 2020',
-        status: 'Expired'
+        coupon_code: 'LAPTOP2020',
+        by_percent: 10.00,
+        by_currency: 50.00,
+        expired_date: '2020-07-21',
+        status: 'active'
     }
 ])
 
 const validateForm = () => {
-    errors.code = ''
+    errors.coupon_code = ''
     
-    if (!newCoupon.code.trim()) {
-        errors.code = 'Coupon code is required'
+    if (!newCoupon.coupon_code.trim()) {
+        errors.coupon_code = 'Coupon code is required'
+        return false
+    }
+    
+    if (newCoupon.coupon_code.length > 100) {
+        errors.coupon_code = 'Coupon code must be 100 characters or less'
         return false
     }
     
@@ -254,17 +288,17 @@ const handleSubmit = async () => {
         // Simulate API call
         await new Promise(resolve => setTimeout(resolve, 1000))
         
+        // Format the date for display/storage
+        const formattedDate = newCoupon.expired_date ? 
+            new Date(newCoupon.expired_date).toISOString().split('T')[0] : null
+        
         // Add new coupon to the list
         const newCouponData = {
-            code: newCoupon.code,
-            percent: newCoupon.percent ? `${newCoupon.percent}%` : '0%',
-            currency: newCoupon.currency ? `$${Number(newCoupon.currency).toFixed(2)}` : '$0.00',
-            createdAt: new Date().toLocaleDateString('en-US', { 
-                month: 'short', 
-                day: 'numeric', 
-                year: 'numeric' 
-            }),
-            status: 'Active'
+            coupon_code: newCoupon.coupon_code,
+            by_percent: newCoupon.by_percent || 0,
+            by_currency: newCoupon.by_currency || 0,
+            expired_date: formattedDate || new Date().toISOString().split('T')[0],
+            status: newCoupon.status
         }
         
         coupons.value.unshift(newCouponData)
@@ -281,12 +315,13 @@ const handleSubmit = async () => {
 }
 
 const resetForm = () => {
-    newCoupon.code = ''
-    newCoupon.percent = null
-    newCoupon.currency = null
-    newCoupon.expiredDate = null
+    newCoupon.coupon_code = ''
+    newCoupon.by_percent = null
+    newCoupon.by_currency = null
+    newCoupon.expired_date = null
+    newCoupon.status = 'active'
     newCoupon.description = ''
-    errors.code = ''
+    errors.coupon_code = ''
 }
 
 const handleActionMenu = (coupon: any) => {
