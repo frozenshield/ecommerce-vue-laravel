@@ -5,7 +5,7 @@
       <div class="w-full max-w-xs">
         <!-- Logo and Title -->
         <div class="text-center mb-8">
-          <span class="text-4xl font-bold text-white">mart<span class="text-yellow-400">fury</span></span>
+          <span class="text-4xl font-bold text-white">Russel<span class="text-yellow-400">Luis</span></span>
           <h2 class="text-xl text-gray-300 mt-2">Sign In Below</h2>
         </div>
         <!-- Login Form -->
@@ -74,22 +74,17 @@
 </template>
 
 <script setup lang="ts"> 
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import axios from 'axios';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../../stores/auth';
+import { getAuthToken } from '../../utils/auth';
 import InputText from 'primevue/inputtext';
 import Password from 'primevue/password';
 import Checkbox from 'primevue/checkbox';
 import Button from 'primevue/button';
 import Toast from 'primevue/toast'
 import { useToast } from 'primevue/usetoast'
-
-
-
-
-
-// Replace with your actual background image path
 
 const username = ref('');
 const password = ref('');
@@ -99,6 +94,20 @@ const loading = ref(false)
 const toast = useToast()
 const router = useRouter()
 const authStore = useAuthStore()
+
+onMounted(() => {
+  const token = getAuthToken()
+  if (token) {
+    console.log('User already logged in, redirecting to admin dashboard')
+    toast.add({
+      severity: 'info',
+      summary: 'Already Logged In',
+      detail: 'Redirecting to admin dashboard...',
+      life: 2000
+    })
+    router.push('/admin')
+  }
+})
 
 async function handleLogin() {
   error.value = ''

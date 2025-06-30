@@ -17,10 +17,42 @@
                 </div>
          </div>
 
-        <router-link to="/" class="text-sm text-gray-600 hover:text-yellow-500 flex items-center gap-2">
-            VIEW YOUR STORE
-            <i class="pi pi-external-link"></i>
-        </router-link>
+        <div class="flex items-center gap-4">
+            <router-link to="/" class="text-sm text-gray-600 hover:text-yellow-500 flex items-center gap-2">
+                VIEW YOUR STORE
+                <i class="pi pi-external-link"></i>
+            </router-link>
+            
+            <button 
+                @click="handleLogout"
+                class="text-sm text-gray-600 hover:text-red-500 flex items-center gap-2 transition-colors duration-200"
+                title="Logout"
+            >
+                LOGOUT
+                <i class="pi pi-sign-out"></i>
+            </button>
+        </div>
        
     </header>
 </template>
+
+<script setup lang="ts">
+import { useRouter } from 'vue-router'
+import { clearAuthToken } from '../../utils/auth'
+
+const router = useRouter()
+
+const handleLogout = () => {
+    // Show confirmation dialog
+    if (confirm('Are you sure you want to logout?')) {
+        // Clear the authentication token
+        clearAuthToken()
+        
+        // Navigate to login page
+        router.push('/adminlogin')
+        
+        // Optional: Show success message
+        console.log('User logged out successfully')
+    }
+}
+</script>

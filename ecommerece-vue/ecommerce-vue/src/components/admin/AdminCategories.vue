@@ -79,9 +79,10 @@
             <!-- Pagination -->
             <div class="flex items-center justify-between mt-6">
                 <div class="text-sm text-gray-700">
-                    Show {{ categories.length }} in {{ totalCategories }} items.
+                    Showing {{ categories.length }} of {{ totalCategories }} items
                 </div>
                 <div class="flex items-center space-x-2">
+                    <!-- Previous Button -->
                     <button 
                         @click="goToPreviousPage" 
                         :disabled="currentPage <= 1"
@@ -89,27 +90,25 @@
                     >
                         <i class="pi pi-chevron-left"></i>
                     </button>
-                    <button 
-                        @click="goToPage(1)"
-                        :class="currentPage === 1 ? 'px-3 py-1 text-sm bg-yellow-400 text-black rounded' : 'px-3 py-1 text-sm text-gray-500 hover:text-gray-700'"
-                    >
-                        1
-                    </button>
-                    <button 
-                        @click="goToPage(2)"
-                        :class="currentPage === 2 ? 'px-3 py-1 text-sm bg-yellow-400 text-black rounded' : 'px-3 py-1 text-sm text-gray-500 hover:text-gray-700'"
-                    >
-                        2
-                    </button>
-                    <button 
-                        @click="goToPage(3)"
-                        :class="currentPage === 3 ? 'px-3 py-1 text-sm bg-yellow-400 text-black rounded' : 'px-3 py-1 text-sm text-gray-500 hover:text-gray-700'"
-                    >
-                        3
-                    </button>
+                    
+                    <!-- Dynamic Page Numbers -->
+                    <template v-for="page in visiblePages" :key="page">
+                        <button 
+                            v-if="typeof page === 'number'"
+                            @click="goToPage(page)"
+                            :class="currentPage === page 
+                                ? 'px-3 py-1 text-sm bg-orange-400 text-white rounded font-medium' 
+                                : 'px-3 py-1 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded'"
+                        >
+                            {{ page }}
+                        </button>
+                        <span v-else class="px-3 py-1 text-sm text-gray-400">...</span>
+                    </template>
+                    
+                    <!-- Next Button -->
                     <button 
                         @click="goToNextPage" 
-                        :disabled="currentPage >= Math.ceil(totalCategories / 10)"
+                        :disabled="currentPage >= totalPages"
                         class="px-3 py-1 text-sm text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <i class="pi pi-chevron-right"></i>
@@ -184,7 +183,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, nextTick } from 'vue'
+import { ref, reactive, onMounted, nextTick, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -207,12 +206,62 @@ interface Category {
 }
 
 const loading = ref(false)
-const totalCategories = ref(50)
+const totalCategories = ref(0)  // Changed from 50 to 0 initially
 const currentPage = ref(1)
 const tableKey = ref(0)
 const router = useRouter()
 const menu = ref()
 const selectedCategory = ref<Category | null>(null)
+
+// Computed properties for pagination
+const totalPages = computed(() => {
+    return Math.ceil(totalCategories.value / 10) // 10 items per page
+})
+
+const visiblePages = computed(() => {
+    const total = totalPages.value
+    const current = currentPage.value
+    const pages: (number | string)[] = []
+    
+    if (total <= 7) {
+        // Show all pages if total is 7 or less
+        for (let i = 1; i <= total; i++) {
+            pages.push(i)
+        }
+    } else {
+        // Complex pagination logic
+        if (current <= 4) {
+            // Show first 5 pages + ... + last page
+            for (let i = 1; i <= 5; i++) {
+                pages.push(i)
+            }
+            if (total > 6) {
+                pages.push('...')
+                pages.push(total)
+            }
+        } else if (current >= total - 3) {
+            // Show first page + ... + last 5 pages
+            pages.push(1)
+            if (total > 6) {
+                pages.push('...')
+            }
+            for (let i = total - 4; i <= total; i++) {
+                pages.push(i)
+            }
+        } else {
+            // Show first page + ... + current-1, current, current+1 + ... + last page
+            pages.push(1)
+            pages.push('...')
+            for (let i = current - 1; i <= current + 1; i++) {
+                pages.push(i)
+            }
+            pages.push('...')
+            pages.push(total)
+        }
+    }
+    
+    return pages
+})
 
 // Helper function to redirect to login
 const redirectToLogin = () => {
@@ -222,7 +271,7 @@ const redirectToLogin = () => {
 const newCategory = reactive({
     name: '',
     description: '',
-    status: 'Active'
+    status: 'active'
 })
 
 const errors = reactive({
@@ -230,8 +279,8 @@ const errors = reactive({
 })
 
 const statusOptions = [
-    { label: 'Active', value: 'Active' },
-    { label: 'Inactive', value: 'Inactive' }
+    { label: 'active', value: 'active' },
+    { label: 'inactive', value: 'inactive' }
 ]
 
 const categories = ref<Category[]>([
@@ -241,8 +290,8 @@ const categories = ref<Category[]>([
 // Menu items for category actions
 const getMenuItems = (category: Category) => [
     {
-        label: `Mark as ${category.status === 'Active' ? 'Inactive' : 'Active'}`,
-        icon: category.status === 'Active' ? 'pi pi-eye-slash' : 'pi pi-eye',
+        label: `Mark as ${category.status === 'active' ? 'inactive' : 'active'}`,
+        icon: category.status === 'active' ? 'pi pi-eye-slash' : 'pi pi-eye',
         command: () => toggleCategoryStatus(category)
     },
     {
@@ -261,17 +310,11 @@ const getMenuItems = (category: Category) => [
 ]
 
 // Pagination functions
-const goToPage = async (page: number) => {
-    console.log(`Attempting to go to page ${page}`)
-    console.log(`Current page: ${currentPage.value}`)
-    console.log(`Total categories: ${totalCategories.value}`)
-    console.log(`Max pages: ${Math.ceil(totalCategories.value / 10)}`)
+const goToPage = async (page: number | string) => {
+    if (typeof page === 'string') return // Skip ellipsis clicks
     
-    if (page >= 1 && page <= Math.ceil(totalCategories.value / 10)) {
-        console.log(`Fetching page ${page}...`)
+    if (page >= 1 && page <= totalPages.value && page !== currentPage.value) {
         await fetchCategories(page)
-    } else {
-        console.log(`Page ${page} is out of range`)
     }
 }
 
@@ -282,14 +325,13 @@ const goToPreviousPage = async () => {
 }
 
 const goToNextPage = async () => {
-    if (currentPage.value < Math.ceil(totalCategories.value / 10)) {
+    if (currentPage.value < totalPages.value) {
         await goToPage(currentPage.value + 1)
     }
 }
 
 // Fetch categories from API
 const fetchCategories = async (page: number = 1) => {
-    console.log(`=== FETCHING CATEGORIES FOR PAGE ${page} ===`)
     loading.value = true
     try {
         // Check authentication first
@@ -299,152 +341,100 @@ const fetchCategories = async (page: number = 1) => {
         }
 
         const apiUrl = `http://127.0.0.1:8000/api/product_category?page=${page}&per_page=10`
-        console.log(`API URL: ${apiUrl}`)
 
         const response = await fetch(apiUrl, {
             method: 'GET',
             headers: getAuthHeaders()
         })
 
-        console.log(`API Response status: ${response.status}`)
-
         if (!response.ok) {
-            const errorData = await response.json()
+            const errorText = await response.text()
             
             // Handle authentication errors
             if (handleAuthError(response.status, redirectToLogin)) {
                 return
             }
             
-            throw new Error(`Failed to fetch categories: ${response.status} - ${errorData.message || 'Unknown error'}`)
+            throw new Error(`Failed to fetch categories: ${response.status} - ${errorText}`)
+        }
+
+        // Check if response is JSON before parsing
+        const contentType = response.headers.get('content-type')
+        if (!contentType || !contentType.includes('application/json')) {
+            throw new Error('Server returned non-JSON response. Check your Laravel API.')
         }
 
         const result = await response.json()
-        console.log('API Response:', result)
-        console.log('Response status:', response.status)
-        console.log('Response ok:', response.ok)
         
         // Handle different possible response structures
         let categoriesData = []
         
-        if (Array.isArray(result.data)) {
+        if (result && result.data && Array.isArray(result.data)) {
+            // Laravel pagination structure
             categoriesData = result.data
         } else if (Array.isArray(result)) {
+            // Direct array structure
             categoriesData = result
-        } else if (result.categories && Array.isArray(result.categories)) {
+        } else if (result && result.categories && Array.isArray(result.categories)) {
+            // Custom categories structure
             categoriesData = result.categories
-        } else {
-            console.warn('Unexpected API response structure:', result)
-            categoriesData = []
         }
-        
-        console.log(`Found ${categoriesData.length} categories from API`)
         
         // Map API response to component format
-        const apiCategories = categoriesData.map((category: any, index: number) => {
-            return {
-                id: category.id || index + 1,
-                name: category.name || 'Unnamed Category',
-                description: category.description || 'No description provided',
-                products: category.products_count || category.products || 0,
-                createdAt: category.created_at ? new Date(category.created_at).toLocaleDateString('en-US', { 
-                    month: 'short', 
-                    day: 'numeric', 
-                    year: 'numeric' 
-                }) : new Date().toLocaleDateString('en-US', { 
-                    month: 'short', 
-                    day: 'numeric', 
-                    year: 'numeric' 
-                }),
-                status: category.status || 'Active'
-            }
-        })
+        const apiCategories = categoriesData.map((category: any, index: number) => ({
+            id: category.product_category_id || category.id || index + 1,
+            name: category.name || 'Unnamed Category',
+            description: category.description || 'No description provided',
+            products: category.products_count || category.products || 0,
+            createdAt: category.created_at ? new Date(category.created_at).toLocaleDateString('en-US', { 
+                month: 'short', 
+                day: 'numeric', 
+                year: 'numeric' 
+            }) : new Date().toLocaleDateString('en-US', { 
+                month: 'short', 
+                day: 'numeric', 
+                year: 'numeric' 
+            }),
+            status: category.status || 'active'
+        }))
 
-        if (apiCategories.length > 0) {
-            console.log('Using API data')
-            categories.value = apiCategories
-            
-            // Handle Laravel pagination metadata
-            if (result.total !== undefined) {
-                totalCategories.value = result.total
-            } else if (result.count !== undefined) {
-                totalCategories.value = result.count
-            } else {
-                totalCategories.value = apiCategories.length
-            }
-            
-            currentPage.value = page
-            console.log(`API data loaded: ${apiCategories.length} categories on page ${page}`)
-            console.log(`Total categories: ${totalCategories.value}`)
-            console.log('Categories on this page:', apiCategories.map((c: any) => c.name))
-            
-            // Force Vue to update the table
-            tableKey.value++
-            await nextTick()
+        // Set categories data
+        categories.value = apiCategories
+        
+        // Handle Laravel pagination metadata
+        if (result && result.total !== undefined) {
+            totalCategories.value = result.total
+        } else if (result && result.count !== undefined) {
+            totalCategories.value = result.count
+        } else if (result && result.last_page !== undefined) {
+            // Laravel pagination sometimes uses last_page and per_page
+            const perPage = result.per_page || 10
+            totalCategories.value = (result.last_page - 1) * perPage + apiCategories.length
         } else {
-            console.log('API returned no data, using sample data')
-            // If no categories returned, add some sample data for testing pagination
-            // Create sample data based on page
-            const sampleData = [
-                { id: 1, name: 'Electronics', description: 'Electronic devices', products: 25, createdAt: 'Jun 29, 2025', status: 'active' },
-                { id: 2, name: 'Clothing', description: 'Fashion items', products: 18, createdAt: 'Jun 29, 2025', status: 'active' },
-                { id: 3, name: 'Books', description: 'Educational materials', products: 12, createdAt: 'Jun 29, 2025', status: 'inactive' },
-                { id: 4, name: 'Home & Garden', description: 'Home improvement', products: 35, createdAt: 'Jun 29, 2025', status: 'active' },
-                { id: 5, name: 'Sports', description: 'Sports equipment', products: 22, createdAt: 'Jun 29, 2025', status: 'active' },
-                { id: 6, name: 'Beauty', description: 'Cosmetics and care', products: 40, createdAt: 'Jun 29, 2025', status: 'inactive' },
-                { id: 7, name: 'Toys', description: 'Children toys', products: 15, createdAt: 'Jun 29, 2025', status: 'active' },
-                { id: 8, name: 'Automotive', description: 'Car accessories', products: 28, createdAt: 'Jun 29, 2025', status: 'active' },
-                { id: 9, name: 'Health', description: 'Health products', products: 33, createdAt: 'Jun 29, 2025', status: 'active' },
-                { id: 10, name: 'Music', description: 'Musical instruments', products: 19, createdAt: 'Jun 29, 2025', status: 'inactive' },
-                { id: 11, name: 'Pet Supplies', description: 'Pet food and toys', products: 27, createdAt: 'Jun 29, 2025', status: 'active' },
-                { id: 12, name: 'Office', description: 'Office supplies', products: 24, createdAt: 'Jun 29, 2025', status: 'active' },
-                { id: 13, name: 'Kitchen', description: 'Kitchen appliances', products: 31, createdAt: 'Jun 29, 2025', status: 'active' },
-                { id: 14, name: 'Gaming', description: 'Video games', products: 16, createdAt: 'Jun 29, 2025', status: 'active' },
-                { id: 15, name: 'Jewelry', description: 'Fashion jewelry', products: 29, createdAt: 'Jun 29, 2025', status: 'inactive' },
-                { id: 16, name: 'Travel', description: 'Travel accessories', products: 21, createdAt: 'Jun 29, 2025', status: 'active' },
-                { id: 17, name: 'Baby', description: 'Baby products', products: 38, createdAt: 'Jun 29, 2025', status: 'active' },
-                { id: 18, name: 'Food', description: 'Food items', products: 42, createdAt: 'Jun 29, 2025', status: 'active' },
-                { id: 19, name: 'Outdoor', description: 'Outdoor equipment', products: 26, createdAt: 'Jun 29, 2025', status: 'active' },
-                { id: 20, name: 'Photography', description: 'Camera equipment', products: 14, createdAt: 'Jun 29, 2025', status: 'inactive' },
-                { id: 21, name: 'Art & Craft', description: 'Art supplies', products: 17, createdAt: 'Jun 29, 2025', status: 'active' },
-                { id: 22, name: 'Tools', description: 'Hand tools', products: 23, createdAt: 'Jun 29, 2025', status: 'active' },
-                { id: 23, name: 'Garden', description: 'Garden tools', products: 30, createdAt: 'Jun 29, 2025', status: 'active' },
-                { id: 24, name: 'Fitness', description: 'Fitness equipment', products: 25, createdAt: 'Jun 29, 2025', status: 'active' },
-                { id: 25, name: 'Stationery', description: 'Office stationery', products: 20, createdAt: 'Jun 29, 2025', status: 'active' }
-            ]
-            
-            const itemsPerPage = 10
-            const startIndex = (page - 1) * itemsPerPage
-            const endIndex = startIndex + itemsPerPage
-            
-            console.log(`Sample data pagination: startIndex=${startIndex}, endIndex=${endIndex}`)
-            console.log(`Page ${page} should show categories ${startIndex + 1} to ${endIndex}`)
-            
-            categories.value = sampleData.slice(startIndex, endIndex)
-            totalCategories.value = sampleData.length
-            currentPage.value = page
-            
-            console.log(`Set ${categories.value.length} categories for page ${page}`)
-            console.log('Categories:', categories.value.map(c => c.name))
-            
-            // Force Vue to update the table
-            tableKey.value++
-            await nextTick()
+            // Fallback calculation
+            if (apiCategories.length === 10) {
+                totalCategories.value = Math.max(50, page * 10 + 10) // Estimate
+            } else {
+                totalCategories.value = (page - 1) * 10 + apiCategories.length
+            }
         }
         
-        console.log(`=== FINAL STATE: Page ${currentPage.value}, Total: ${totalCategories.value}, Showing: ${categories.value.length} ===`)
+        currentPage.value = page
+        
+        // Force Vue to update the table
+        tableKey.value++
+        await nextTick()
         
     } catch (error) {
-        console.error('Error fetching categories:', error)
+        // Set empty array if there's an error
+        categories.value = []
         
-        // Show user-friendly error message
         const errorMessage = error instanceof Error ? error.message : 'Failed to fetch categories'
         alert(`Error: ${errorMessage}`)
         
-        // Keep categories empty to show the actual issue
-        categories.value = []
     } finally {
         loading.value = false
+        console.log(`Loading set to false`)
     }
 }
 
@@ -503,22 +493,24 @@ const handleSubmit = async () => {
             throw new Error(errorData.message || 'Failed to create category')
         }
 
-        const result = await response.json()
-        
-        // Refresh current page to show updated data
-        await fetchCategories(currentPage.value)
+        // After adding, calculate the last page where the new category will be
+        const newTotal = totalCategories.value + 1
+        const perPage = 10 // As defined in the fetch function
+        const lastPage = Math.ceil(newTotal / perPage)
+
+        // Fetch the last page to show the new category
+        await fetchCategories(lastPage)
         
         // Reset form
         resetForm()
         
-        // Show success message (you can replace this with a toast notification)
+        // Show success message
         alert('Category created successfully!')
         
-        console.log('Category added successfully:', result)
     } catch (error) {
         console.error('Error adding category:', error)
         
-        // Show error message (you can replace this with a toast notification)
+        // Show error message
         const errorMessage = error instanceof Error ? error.message : 'Failed to create category'
         alert(`Error: ${errorMessage}`)
     } finally {
@@ -529,7 +521,7 @@ const handleSubmit = async () => {
 const resetForm = () => {
     newCategory.name = ''
     newCategory.description = ''
-    newCategory.status = 'Active'
+    newCategory.status = 'active'
     errors.name = ''
 }
 
@@ -547,37 +539,74 @@ const toggleCategoryStatus = async (category: Category) => {
             return
         }
 
+        // Calculate the new status
+        const newStatus = category.status === 'active' ? 'inactive' : 'active'
+
+        // For PUT, we need to send all required fields for the resource
+        const updateData = {
+            name: category.name,
+            description: category.description,
+            status: newStatus
+        }
+
         const response = await fetch(`http://127.0.0.1:8000/api/product_category/${category.id}/toggle-status`, {
             method: 'PATCH',
-            headers: getAuthHeaders()
+            headers: {
+                ...getAuthHeaders(),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(updateData)
         })
 
         if (!response.ok) {
-            const errorData = await response.json()
+            const responseText = await response.text()
+            let errorData
+            try {
+                errorData = JSON.parse(responseText)
+            } catch (e) {
+                errorData = { message: responseText }
+            }
             
             // Handle authentication errors
             if (handleAuthError(response.status, redirectToLogin)) {
                 return
             }
             
-            throw new Error(errorData.message || 'Failed to toggle category status')
+            throw new Error(errorData.message || `Failed to toggle category status (HTTP ${response.status})`)
         }
-
-        const result = await response.json()
         
-        // Refresh current page to show updated data
-        await fetchCategories(currentPage.value)
+        // Immediately update the local category status for instant UI feedback
+        const categoryIndex = categories.value.findIndex(c => c.id === category.id)
+        if (categoryIndex !== -1) {
+            // Update the local array immediately
+            categories.value[categoryIndex] = {
+                ...categories.value[categoryIndex],
+                status: newStatus
+            }
+            
+            // Force Vue to re-render the table
+            tableKey.value++
+            await nextTick()
+        }
         
         // Show success message
-        alert(`Category status updated successfully`)
+        alert(`Category "${category.name}" status updated to ${newStatus} successfully`)
         
-        console.log('Category status toggled successfully:', result)
+        // Then refresh from API to ensure data consistency
+        console.log(`Refreshing page ${currentPage.value} to sync with backend`)
+        setTimeout(async () => {
+            await fetchCategories(currentPage.value)
+        }, 1000)
+        
     } catch (error) {
         console.error('Error toggling category status:', error)
         
         // Show error message
         const errorMessage = error instanceof Error ? error.message : 'Failed to toggle category status'
         alert(`Error: ${errorMessage}`)
+        
+        // Refresh the current page to restore correct state if there was an error
+        await fetchCategories(currentPage.value)
     }
 }
 
@@ -601,10 +630,13 @@ const deleteCategory = async (category: Category) => {
             return
         }
 
+        console.log(`Deleting category with ID: ${category.id}`)
         const response = await fetch(`http://127.0.0.1:8000/api/product_category/${category.id}`, {
             method: 'DELETE',
             headers: getAuthHeaders()
         })
+
+        console.log(`Delete response status: ${response.status}`)
 
         if (!response.ok) {
             const errorData = await response.json()
@@ -618,18 +650,32 @@ const deleteCategory = async (category: Category) => {
         }
 
         const result = await response.json()
+        console.log('Category deleted successfully:', result)
         
-        // If we're on the last page and it becomes empty, go to previous page
-        const shouldGoToPreviousPage = categories.value.length === 1 && currentPage.value > 1
-        const pageToFetch = shouldGoToPreviousPage ? currentPage.value - 1 : currentPage.value
+        // Immediately remove the category from the local array to update UI instantly
+        console.log(`Categories before removal: ${categories.value.length}`)
+        categories.value = categories.value.filter(c => c.id !== category.id)
+        console.log(`Categories after removal: ${categories.value.length}`)
         
-        // Refresh the appropriate page
-        await fetchCategories(pageToFetch)
+        // Update total count
+        totalCategories.value = Math.max(0, totalCategories.value - 1)
+        
+        // Force Vue to update the table immediately
+        tableKey.value++
+        await nextTick()
         
         // Show success message
         alert(`Category "${category.name}" has been deleted successfully!`)
         
-        console.log('Category deleted successfully:', result)
+        // Then refresh from API to ensure data consistency
+        console.log(`Refreshing page ${currentPage.value} after deletion`)
+        await fetchCategories(currentPage.value)
+        
+        // If current page is now empty and we're not on page 1, go to previous page
+        if (categories.value.length === 0 && currentPage.value > 1) {
+            console.log(`Current page is empty, going to page ${currentPage.value - 1}`)
+            await fetchCategories(currentPage.value - 1)
+        }
     } catch (error) {
         console.error('Error deleting category:', error)
         
@@ -771,8 +817,12 @@ button[class*="px-3 py-1"] {
     transition: all 0.2s ease;
 }
 
-button[class*="px-3 py-1"]:hover {
+button[class*="px-3 py-1"]:hover:not(:disabled) {
     background-color: #f3f4f6;
+}
+
+.bg-orange-400 {
+    background-color: #fb923c !important;
 }
 
 .bg-yellow-400 {

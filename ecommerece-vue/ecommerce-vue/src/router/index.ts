@@ -12,7 +12,7 @@ import AdminCoupons from '../components/admin/AdminCoupons.vue'
 import AdminCategories from '../components/admin/AdminCategories.vue'
 import AdminSettings from '../components/admin/AdminSettings.vue'
 import AdminDashboard from '../components/admin/AdminDashboard.vue'
-
+import 'leaflet/dist/leaflet.css';
 
 // main.ts
 import 'primeicons/primeicons.css'

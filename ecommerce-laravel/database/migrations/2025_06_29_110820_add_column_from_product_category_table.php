@@ -24,8 +24,10 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('product_category', function (Blueprint $table) {
-            //
-        });
+        DB::statement("
+            ALTER TABLE product_category
+            DROP COLUMN description,
+            DROP COLUMN status;
+        ");
     }
 };

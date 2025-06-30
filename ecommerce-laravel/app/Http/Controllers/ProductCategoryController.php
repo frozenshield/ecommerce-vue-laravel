@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Redis;
+
 
 class ProductCategoryController extends Controller
 {
@@ -13,7 +15,13 @@ class ProductCategoryController extends Controller
      */
     public function getAllCategory(Request $request)
     {
-        if(!auth()->user()->isAdmin() && !auth()->user()->isSeller()){
+
+        $user = auth()->user();
+
+        $userId = $user->user_id;
+
+
+        if(!$userId && !auth()->user()->isAdmin()){
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
@@ -22,10 +30,14 @@ class ProductCategoryController extends Controller
         $perPage = 10;
         $offset = ($page - 1) * $perPage;
 
-        // get total count
+        $cachedResponse = Redis::get("category:all:page:$page");
+        if($cachedResponse){
+            return response()->json(json_decode($cachedResponse, true));
+        }
+
+
         $totalCount = DB::selectOne("SELECT COUNT(*) as total FROM product_category")->total;
 
-        // get pagination info
         $categories = DB::select("SELECT * FROM product_category ORDER BY created_at DESC LIMIT ? OFFSET ?",[$perPage, $offset]);
 
         // Calculate pagination info
@@ -33,11 +45,12 @@ class ProductCategoryController extends Controller
         $hasNextPage = $page < $totalPages;
         $hasPreviousPage = $page > 1;
 
-        // 🔍 Add debugging info
-        \Log::info("API Debug - Page: {$page}, PerPage: {$perPage}, Offset: {$offset}, Total: {$totalCount}, Retrieved: " . count($categories));
-
-        return response()->json([
+        // Build the complete response structure
+        $responseData = [
             'data' => $categories,
+            'total' => $totalCount, // ✅ Add this for frontend compatibility
+            'count' => count($categories), // ✅ Add this too
+            'last_page' => $totalPages, // ✅ Add this for Laravel-style pagination
             'pagination' => [
                 'current_page' => (int)$page,
                 'per_page' => $perPage,
@@ -48,7 +61,6 @@ class ProductCategoryController extends Controller
                 'next_page' => $hasNextPage ? $page + 1 : null,
                 'previous_page' => $hasPreviousPage ? $page - 1 : null
             ],
-            // 🔍 Temporary debug info
             'debug' => [
                 'page_requested' => $page,
                 'offset_calculated' => $offset,
@@ -57,7 +69,14 @@ class ProductCategoryController extends Controller
                 'first_category_id' => !empty($categories) ? $categories[0]->product_category_id : null,
                 'last_category_id' => !empty($categories) ? end($categories)->product_category_id : null
             ]
-        ], 200);
+        ];
+
+        // Cache the complete response structure
+        Redis::setex("category:all:page:$page", 6600, json_encode($responseData));
+
+        return response()->json($responseData, 200);
+
+        
     }
 
     /**
@@ -65,10 +84,10 @@ class ProductCategoryController extends Controller
      */
     public function addProductCategory(Request $request)
     {
-        $seller = auth()->user()->isSeller();
-        $admin = auth()->user()->isAdmin();
-
-        if(!$seller && !$admin){
+        $user = auth()->user();
+        $userId = $user->user_id;
+        
+        if(!$user && !auth()->user()->isAdmin()){
             return response()->json(['message' => 'Unauthorized'], 401);
         }
         $exists = DB::selectOne("SELECT * FROM product_category WHERE name = ?", [$request->input('name')]);
@@ -95,10 +114,12 @@ class ProductCategoryController extends Controller
                 now()
             ]);
 
+
         $lastId = DB::getPdo()->lastInsertId();
         $getCategory = DB::selectOne("SELECT * FROM product_category WHERE product_category_id = ?", [$lastId]);
         return $getCategory ? response()->json([$getCategory], 200)
                             : response()->json(['message' => 'Category not Found'], 404);
+
     }
 
     /**
@@ -146,57 +167,69 @@ class ProductCategoryController extends Controller
         if($affectedRows === 0){
             return response()->json(['message' => 'No Changes'], 404);
         }
-        
+        // Invalidate all paginated category caches
+       
         $updatedRow = DB::selectOne("SELECT * FROM product_category WHERE product_category_id = ?", [$product_category_id]);
         return response()->json($updatedRow, 200);
     }
 
 
     public function toggleCategoryStatus($product_category_id)
-        {
-            $admin = auth()->user()->isAdmin();
-            $seller = auth()->user()->isSeller();
+    {
+        $admin = auth()->user()->isAdmin();
+        $seller = auth()->user()->isSeller();
 
-            if (!$admin && !$seller) {
-                return response()->json(['message' => 'Unauthorized'], 401);
-            }
-
-            $category = DB::selectOne("SELECT * FROM product_category WHERE product_category_id = ?", [$product_category_id]);
-
-            if (!$category) {
-                return response()->json(['message' => 'Product Category Not Found'], 404);
-            }
-
-            $newStatus = ($category->status === 'active') ? 'inactive' : 'active';
-
-            $affectedRows = DB::update(
-                "UPDATE product_category SET status = ?, updated_at = ? WHERE product_category_id = ?",
-                [$newStatus, now(), $product_category_id]
-            );
-
-            if ($affectedRows === 0) {
-                return response()->json(['message' => 'Failed to update status'], 500);
-            }
-
-            $updatedQuery = DB::selectOne("SELECT * FROM product_category WHERE product_category_id = ?", [$product_category_id]);
-
-            return response()->json([
-                'message' => "Category status changed to {$newStatus}",
-                'category' => $updatedQuery
-            ], 200);
+        if (!$admin && !$seller) {
+            return response()->json(['message' => 'Unauthorized'], 401);
         }
+
+        $category = DB::selectOne("SELECT * FROM product_category WHERE product_category_id = ?", [$product_category_id]);
+
+        if (!$category) {
+            return response()->json(['message' => 'Product Category Not Found'], 404);
+        }
+
+        $newStatus = ($category->status === 'active') ? 'inactive' : 'active';
+
+        $affectedRows = DB::update(
+            "UPDATE product_category SET status = ?, updated_at = ? WHERE product_category_id = ?",
+            [$newStatus, now(), $product_category_id]
+        );
+
+        if ($affectedRows === 0) {
+            return response()->json(['message' => 'Failed to update status'], 500);
+        }
+
+
+        $updatedQuery = DB::selectOne("SELECT * FROM product_category WHERE product_category_id = ?", [$product_category_id]);
+
+        return response()->json([
+            'message' => "Category status changed to {$newStatus}",
+            'category' => $updatedQuery
+        ], 200);
+    }
 
     /**
      * Remove the specified resource from storage.
      */
     public function deleteCategory($product_category_id)
     {
+
         if(!auth()->user()->isSeller() && !auth()->user()->isAdmin()){
             return response()->json(['message' => 'Unauthorized'], 402);
         }
 
         $deleteId = DB::delete("DELETE FROM product_category WHERE product_category_id = ?", [$product_category_id]);
-        return $deleteId ? response()->json($deleteId, 200)
-                         : response()->json(['message' => 'Failed to delete'], 500);
+
+        if($deleteId){
+            foreach (Redis::keys('category:all:page:*') as $key) {
+                Redis::del($key);
+            }
+
+            return response()->json(['message' => 'Category Deleted Successfully'], 200);
+        } else {
+            return response()->json(['message' => 'Failed to delete'], 500);
+        }
     }
 }
+
