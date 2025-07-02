@@ -72,7 +72,7 @@ class ProductCategoryController extends Controller
         ];
 
         // Cache the complete response structure
-        Redis::setex("category:all:page:$page", 6600, json_encode($responseData));
+        Redis::setex("category:all:page:$page", 1, json_encode($responseData));
 
         return response()->json($responseData, 200);
 

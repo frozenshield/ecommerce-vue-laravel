@@ -75,17 +75,46 @@ class CouponController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show($coupon_id)
+    public function getSpecificCoupon($coupon_id)
     {
-        //
+        $user = auth()->user();
+        $userId = $user->user_id;
+
+        if(!$user && !auth()->user()->isAdmin()){
+            return response()->json(['message' => 'Unauthorize'], 401);
+        }
+
+        $specificCoupon = DB::selectOne("SELECT * FROM coupon WHERE coupon_id = ?", $coupon_id);
+        return $specificCoupon ? response()->json($sepcificCoupon, 200)
+                               : response()->json(['message' => 'Coupon Not Found'], 404);
+
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function editCoupon(Request $request, $coupon_id)
     {
-        //
+        $user = auth()->user();
+        $userId = $user()->user_id;
+
+        if(!$user && !auth()->user()->isAdmin()){
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $validation = Validator::make($request->all(), [
+            'coupon_code' => 'required|string|max:100|unique:coupon,coupon_code',
+            'by_percent' => 'nullable|numeric|min:0|max:100',
+            'by_currency' => 'nullable|numeric|min:0|max:9999999.99',
+            'expired_date' => 'required|date|after:today',
+            'status' => 'required|in:active,inactive',
+            'description' => 'nullable|string|max:150'
+        ]);
+
+        if($validation->fails()){
+            return response()->json(['message' => 'validation failed',
+                                     'error' => $validation->errors()], 422);
+        }
     }
 
     /**
