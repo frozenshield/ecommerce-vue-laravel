@@ -16,11 +16,13 @@ use Illuminate\Support\Facades\Route;
 // Alternatively, you can define the routes manually as follows:
 
 Route::prefix('products')->group(function () {
-    Route::get('/', [ProductsController::class, 'index']);
-    Route::get('/{id}', [ProductsController::class, 'show']);
-    Route::post('/', [ProductsController::class, 'store']);
-    Route::put('/{id}', [ProductsController::class, 'update']);
-    Route::delete('/{id}', [ProductsController::class, 'destroy']);
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('/', [ProductsController::class, 'index']);
+        Route::get('/{id}', [ProductsController::class, 'show']);
+        Route::post('/', [ProductsController::class, 'addProduct']);
+        Route::put('/{id}', [ProductsController::class, 'update']);
+        Route::delete('/{id}', [ProductsController::class, 'destroy']);
+    });
 });
 
 
@@ -89,7 +91,8 @@ Route::prefix('profile')->group(function () {
 
 Route::prefix('product_category')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
-        Route::get('/', [ProductCategoryController::class, 'getAllCategory']);
+        Route::get('/all', [ProductCategoryController::class, 'getAllCategory']);
+        Route::get('/', [ProductCategoryController::class, 'getPaginatedCategory']);
         Route::post('/', [ProductCategoryController::class, 'addProductCategory']);
         Route::get('/{product_category_id}', [ProductCategoryController::class, 'getSpecificCategory']);
         Route::put('/{product_category_id}', [ProductCategoryController::class, 'editCategory']);
@@ -109,6 +112,9 @@ Route::prefix('wishlist')->group(function () {
 Route::prefix('coupon')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [CouponController::class, 'getAllCoupon']);
+        Route::get('/{coupon_id}', [CouponController::class, 'getSpecificCoupon']);
+        Route::put('/{coupon_id}', [CouponController::class, 'editCoupon']);
+        Route::patch('/{coupon_id}/toggle-status', [CouponController::class, 'toggleCoupon']);
         Route::post('/', [CouponController::class, 'createCoupon']);
         Route::delete('/{coupon_id}', [CouponController::class, 'deleteCoupon']);
     });

@@ -13,7 +13,23 @@ class ProductCategoryController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function getAllCategory(Request $request)
+
+    public function getAllCategory()
+    {
+        $user = auth()->user();
+        $userID = $user->user_id;
+
+        if(!$user && auth()->user()->isAdmin()){
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $getAll = DB::select("SELECT * FROM product_category");
+        return $getAll ? response()->json([$getAll], 200)
+                        : response()->json(['message' => "N product Category Listed"], 404);
+    }
+
+
+    public function getPaginatedCategory(Request $request)
     {
 
         $user = auth()->user();

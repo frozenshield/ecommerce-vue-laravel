@@ -7,9 +7,19 @@
                 <DataTable 
                     :value="coupons" 
                     :paginator="false"
+                    :key="`table-${currentPage}-${tableKey}`"
                     tableStyle="min-width: 50rem"
                     class="p-datatable-sm"
                 >
+                    <template #empty>
+                        <div class="text-center py-8">
+                            <i class="pi pi-info-circle text-4xl text-gray-400 mb-4"></i>
+                            <p class="text-gray-500">{{ loading ? 'Loading coupons...' : 'No coupons found' }}</p>
+                            <p class="text-xs text-gray-400 mt-2">
+                                {{ loading ? 'Please wait while we fetch the data.' : 'Add a new coupon using the form on the right.' }}
+                            </p>
+                        </div>
+                    </template>
                     <Column field="coupon_code" header="Coupon Code" class="text-left">
                         <template #body="slotProps">
                             <span class="text-gray-900 text-sm font-medium">{{ slotProps.data.coupon_code }}</span>
@@ -56,26 +66,55 @@
                                 severity="secondary" 
                                 size="small"
                                 class="text-gray-400 hover:text-gray-600"
-                                @click="handleActionMenu(slotProps.data)"
+                                @click="showActionMenu($event, slotProps.data)"
                             />
                         </template>
                     </Column>
                 </DataTable>
             </div>
 
+            <!-- Action Menu -->
+            <Menu 
+                ref="menu" 
+                :model="selectedCoupon ? getMenuItems(selectedCoupon) : []" 
+                :popup="true" 
+            />
+
             <!-- Pagination -->
             <div class="flex items-center justify-between mt-6">
                 <div class="text-sm text-gray-700">
-                    Show {{ coupons.length }} in {{ totalCoupons }} items.
+                    Showing {{ coupons.length }} of {{ totalCoupons }} coupons
                 </div>
                 <div class="flex items-center space-x-2">
-                    <button class="px-3 py-1 text-sm text-gray-500 hover:text-gray-700">
+                    <!-- Previous Button -->
+                    <button 
+                        @click="goToPreviousPage" 
+                        :disabled="currentPage <= 1"
+                        class="px-3 py-1 text-sm text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
                         <i class="pi pi-chevron-left"></i>
                     </button>
-                    <button class="px-3 py-1 text-sm bg-yellow-400 text-black rounded">1</button>
-                    <button class="px-3 py-1 text-sm text-gray-500 hover:text-gray-700">2</button>
-                    <button class="px-3 py-1 text-sm text-gray-500 hover:text-gray-700">3</button>
-                    <button class="px-3 py-1 text-sm text-gray-500 hover:text-gray-700">
+                    
+                    <!-- Dynamic Page Numbers -->
+                    <template v-for="page in visiblePages" :key="page">
+                        <button 
+                            v-if="typeof page === 'number'"
+                            @click="goToPage(page)"
+                            :class="currentPage === page 
+                                ? 'px-3 py-1 text-sm bg-orange-400 text-white rounded font-medium' 
+                                : 'px-3 py-1 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded'"
+                        >
+                            {{ page }}
+                        </button>
+                        <span v-else class="px-3 py-1 text-sm text-gray-400">...</span>
+                    </template>
+                    
+                    <!-- Next Button -->
+                    <button 
+                        @click="goToNextPage" 
+                        :disabled="currentPage >= totalPages"
+                        class="px-3 py-1 text-sm text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
                         <i class="pi pi-chevron-right"></i>
                     </button>
                 </div>
@@ -190,7 +229,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted, nextTick, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
@@ -200,9 +240,82 @@ import InputNumber from 'primevue/inputnumber'
 import Textarea from 'primevue/textarea'
 import Calendar from 'primevue/calendar'
 import Dropdown from 'primevue/dropdown'
+import Menu from 'primevue/menu'
+import { getAuthHeaders, handleAuthError, requireAuth } from '../../utils/auth'
+
+// Define interface for coupon
+interface Coupon {
+    coupon_id?: number
+    coupon_code: string
+    by_percent: number
+    by_currency: number
+    expired_date: string
+    status: string
+    description?: string
+}
 
 const loading = ref(false)
-const totalCoupons = ref(30)
+const totalCoupons = ref(0)
+const currentPage = ref(1)
+const tableKey = ref(0)
+const router = useRouter()
+const menu = ref()
+const selectedCoupon = ref<Coupon | null>(null)
+
+// Computed properties for pagination
+const totalPages = computed(() => {
+    return Math.ceil(totalCoupons.value / 10) // 10 items per page
+})
+
+const visiblePages = computed(() => {
+    const total = totalPages.value
+    const current = currentPage.value
+    const pages: (number | string)[] = []
+    
+    if (total <= 7) {
+        // Show all pages if total is 7 or less
+        for (let i = 1; i <= total; i++) {
+            pages.push(i)
+        }
+    } else {
+        // Complex pagination logic
+        if (current <= 4) {
+            // Show first 5 pages + ... + last page
+            for (let i = 1; i <= 5; i++) {
+                pages.push(i)
+            }
+            if (total > 6) {
+                pages.push('...')
+                pages.push(total)
+            }
+        } else if (current >= total - 3) {
+            // Show first page + ... + last 5 pages
+            pages.push(1)
+            if (total > 6) {
+                pages.push('...')
+            }
+            for (let i = total - 4; i <= total; i++) {
+                pages.push(i)
+            }
+        } else {
+            // Show first page + ... + current-1, current, current+1 + ... + last page
+            pages.push(1)
+            pages.push('...')
+            for (let i = current - 1; i <= current + 1; i++) {
+                pages.push(i)
+            }
+            pages.push('...')
+            pages.push(total)
+        }
+    }
+    
+    return pages
+})
+
+// Helper function to redirect to login
+const redirectToLogin = () => {
+    router.push('/adminlogin')
+}
 
 const newCoupon = reactive({
     coupon_code: '',
@@ -223,43 +336,190 @@ const statusOptions = [
 ]
 
 // Sample coupons data matching the database schema
-const coupons = ref([
-    {
-        coupon_code: 'MARTFURY-2020',
-        by_percent: 10.00,
-        by_currency: 50.00,
-        expired_date: '2020-07-21',
-        status: 'inactive'
-    },
-    {
-        coupon_code: 'MARTFURY-MID2020',
-        by_percent: 5.00,
-        by_currency: 25.00,
-        expired_date: '2020-07-21',
-        status: 'inactive'
-    },
-    {
-        coupon_code: 'SUMMERHOT',
-        by_percent: 7.50,
-        by_currency: 50.00,
-        expired_date: '2020-07-21',
-        status: 'inactive'
-    },
-    {
-        coupon_code: 'EXPLORE2020',
-        by_percent: 3.00,
-        by_currency: 10.00,
-        expired_date: '2020-07-21',
-        status: 'inactive'
-    },
-    {
-        coupon_code: 'LAPTOP2020',
-        by_percent: 10.00,
-        by_currency: 50.00,
-        expired_date: '2020-07-21',
-        status: 'active'
-    }
+const coupons = ref<Coupon[]>([
+    // Initial empty array - will be populated from API
 ])
+
+
+// Pagination functions
+const goToPage = async (page: number | string) => {
+    if (typeof page === 'string') return // Skip ellipsis clicks
+    
+    if (page >= 1 && page <= totalPages.value && page !== currentPage.value) {
+        await fetchCoupons(page)
+    }
+}
+
+const goToPreviousPage = async () => {
+    if (currentPage.value > 1) {
+        await goToPage(currentPage.value - 1)
+    }
+}
+
+const goToNextPage = async () => {
+    if (currentPage.value < totalPages.value) {
+        await goToPage(currentPage.value + 1)
+    }
+}
+
+// Fetch coupons from API
+const fetchCoupons = async (page: number = 1) => {
+    loading.value = true
+    console.log('fetchCoupons called with page:', page)
+    try {
+        // Temporarily disable auth check for testing
+        /*
+        // Check authentication first
+        if (!requireAuth(redirectToLogin)) {
+            console.log('Authentication check failed')
+            loading.value = false
+            return
+        }
+        */
+
+        const apiUrl = `http://127.0.0.1:8000/api/coupon?page=${page}&per_page=10`
+        console.log('Fetching from URL:', apiUrl)
+
+        const response = await fetch(apiUrl, {
+            method: 'GET',
+            headers: getAuthHeaders()
+        })
+
+        console.log('Response status:', response.status)
+        console.log('Response content-type:', response.headers.get('content-type'))
+
+        if (!response.ok) {
+            const errorText = await response.text()
+            console.log('Error response text:', errorText)
+            
+            // Handle authentication errors
+            if (handleAuthError(response.status, redirectToLogin)) {
+                return
+            }
+            
+            throw new Error(`Failed to fetch coupons: ${response.status} - ${errorText}`)
+        }
+
+        // Check if response is JSON before parsing
+        const contentType = response.headers.get('content-type')
+        if (!contentType || !contentType.includes('application/json')) {
+            throw new Error('Server returned non-JSON response. Check your Laravel API.')
+        }
+
+        const result = await response.json()
+        console.log('API Response:', result)
+        
+        // Handle different possible response structures
+        let couponsData = []
+        
+        console.log('Processing result:', result)
+        
+        if (result && result.data && Array.isArray(result.data)) {
+            // Laravel pagination structure
+            couponsData = result.data
+            console.log('Using Laravel pagination structure, data:', couponsData)
+        } else if (Array.isArray(result)) {
+            // Direct array structure
+            couponsData = result
+            console.log('Using direct array structure, data:', couponsData)
+        } else if (result && result.coupons && Array.isArray(result.coupons)) {
+            // Custom coupons structure
+            couponsData = result.coupons
+            console.log('Using custom coupons structure, data:', couponsData)
+        } else {
+            console.log('Unknown response structure:', result)
+        }
+        
+        console.log('Final couponsData:', couponsData)
+        
+        // Map API response to component format
+        const apiCoupons = couponsData.map((coupon: any, index: number) => ({
+            coupon_id: coupon.coupon_id || coupon.id || index + 1,
+            coupon_code: coupon.coupon_code || 'Unknown Code',
+            by_percent: coupon.by_percent || 0,
+            by_currency: coupon.by_currency || 0,
+            expired_date: coupon.expired_date ? new Date(coupon.expired_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            status: coupon.status || 'active',
+            description: coupon.description || ''
+        }))
+
+        console.log('Mapped apiCoupons:', apiCoupons)
+
+        // Set coupons data
+        coupons.value = apiCoupons
+        console.log('coupons.value after assignment:', coupons.value)
+        
+        // Handle Laravel pagination metadata
+        if (result && result.total !== undefined) {
+            totalCoupons.value = result.total
+        } else if (result && result.count !== undefined) {
+            totalCoupons.value = result.count
+        } else if (result && result.last_page !== undefined) {
+            // Laravel pagination sometimes uses last_page and per_page
+            const perPage = result.per_page || 10
+            totalCoupons.value = (result.last_page - 1) * perPage + apiCoupons.length
+        } else {
+            // Fallback calculation
+            if (apiCoupons.length === 10) {
+                totalCoupons.value = Math.max(50, page * 10 + 10) // Estimate
+            } else {
+                totalCoupons.value = (page - 1) * 10 + apiCoupons.length
+            }
+        }
+        
+        currentPage.value = page
+        
+        // Force Vue to update the table
+        tableKey.value++
+        await nextTick()
+        
+    } catch (error) {
+        // Set empty array if there's an error
+        coupons.value = []
+        
+        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch coupons'
+        alert(`Error: ${errorMessage}`)
+        
+    } finally {
+        loading.value = false
+    }
+}
+
+// Load coupons when component mounts
+onMounted(() => {
+    console.log('AdminCoupons component mounted, calling fetchCoupons(1)')
+    
+    // Then try to fetch from API
+    fetchCoupons(1)
+})
+
+// Menu items for coupon actions
+const getMenuItems = (coupon: Coupon) => [
+    {
+        label: `Mark as ${coupon.status === 'active' ? 'inactive' : 'active'}`,
+        icon: coupon.status === 'active' ? 'pi pi-eye-slash' : 'pi pi-eye',
+        command: () => toggleCouponStatus(coupon)
+    },
+    {
+        separator: true
+    },
+    {
+        label: 'Edit Coupon',
+        icon: 'pi pi-pencil',
+        command: () => editCoupon(coupon)
+    },
+    {
+        label: 'Delete Coupon',
+        icon: 'pi pi-trash',
+        command: () => deleteCoupon(coupon)
+    }
+]
+
+// Show action menu for coupon
+const showActionMenu = (event: Event, coupon: Coupon) => {
+    selectedCoupon.value = coupon
+    menu.value.toggle(event)
+}
 
 const validateForm = () => {
     errors.coupon_code = ''
@@ -285,30 +545,62 @@ const handleSubmit = async () => {
     loading.value = true
 
     try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        
-        // Format the date for display/storage
-        const formattedDate = newCoupon.expired_date ? 
-            new Date(newCoupon.expired_date).toISOString().split('T')[0] : null
-        
-        // Add new coupon to the list
-        const newCouponData = {
+        // Check authentication first
+        if (!requireAuth(redirectToLogin)) {
+            loading.value = false
+            return
+        }
+
+        // Prepare data for API
+        const couponData = {
             coupon_code: newCoupon.coupon_code,
             by_percent: newCoupon.by_percent || 0,
             by_currency: newCoupon.by_currency || 0,
-            expired_date: formattedDate || new Date().toISOString().split('T')[0],
-            status: newCoupon.status
+            expired_date: newCoupon.expired_date ? 
+                new Date(newCoupon.expired_date).toISOString().split('T')[0] : 
+                new Date().toISOString().split('T')[0],
+            status: newCoupon.status,
+            description: newCoupon.description || ''
         }
-        
-        coupons.value.unshift(newCouponData)
+
+        // Make API call to Laravel backend
+        const response = await fetch('http://127.0.0.1:8000/api/coupon', {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(couponData)
+        })
+
+        if (!response.ok) {
+            const errorData = await response.json()
+            
+            // Handle authentication errors
+            if (handleAuthError(response.status, redirectToLogin)) {
+                return
+            }
+            
+            throw new Error(errorData.message || 'Failed to create coupon')
+        }
+
+        // After adding, calculate the last page where the new coupon will be
+        const newTotal = totalCoupons.value + 1
+        const perPage = 10 // As defined in the fetch function
+        const lastPage = Math.ceil(newTotal / perPage)
+
+        // Fetch the last page to show the new coupon
+        await fetchCoupons(lastPage)
         
         // Reset form
         resetForm()
         
-        console.log('Coupon added:', newCouponData)
+        // Show success message
+        alert('Coupon created successfully!')
+        
     } catch (error) {
         console.error('Error adding coupon:', error)
+        
+        // Show error message
+        const errorMessage = error instanceof Error ? error.message : 'Failed to create coupon'
+        alert(`Error: ${errorMessage}`)
     } finally {
         loading.value = false
     }
@@ -324,9 +616,151 @@ const resetForm = () => {
     errors.coupon_code = ''
 }
 
-const handleActionMenu = (coupon: any) => {
-    console.log('Action menu clicked for coupon:', coupon)
-    // Add your action menu logic here
+// Toggle coupon status between Active/Inactive
+const toggleCouponStatus = async (coupon: Coupon) => {
+    try {
+        // Check authentication first
+        if (!requireAuth(redirectToLogin)) {
+            return
+        }
+
+        // Calculate the new status
+        const newStatus = coupon.status === 'active' ? 'inactive' : 'active'
+
+        // For the API, we need to send all required fields for the resource
+        const updateData = {
+            coupon_code: coupon.coupon_code,
+            by_percent: coupon.by_percent,
+            by_currency: coupon.by_currency,
+            expired_date: coupon.expired_date,
+            status: newStatus,
+            description: coupon.description || ''
+        }
+
+        const response = await fetch(`http://127.0.0.1:8000/api/coupon/${coupon.coupon_id}/toggle-status`, {
+            method: 'PATCH',
+            headers: {
+                ...getAuthHeaders(),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(updateData)
+        })
+
+        if (!response.ok) {
+            const responseText = await response.text()
+            let errorData
+            try {
+                errorData = JSON.parse(responseText)
+            } catch (e) {
+                errorData = { message: responseText }
+            }
+            
+            // Handle authentication errors
+            if (handleAuthError(response.status, redirectToLogin)) {
+                return
+            }
+            
+            throw new Error(errorData.message || `Failed to toggle coupon status (HTTP ${response.status})`)
+        }
+        
+        // Immediately update the local coupon status for instant UI feedback
+        const couponIndex = coupons.value.findIndex(c => c.coupon_id === coupon.coupon_id)
+        if (couponIndex !== -1) {
+            // Update the local array immediately
+            coupons.value[couponIndex] = {
+                ...coupons.value[couponIndex],
+                status: newStatus
+            }
+            
+            // Force Vue to re-render the table
+            tableKey.value++
+            await nextTick()
+        }
+        
+        // Show success message
+        alert(`Coupon "${coupon.coupon_code}" status updated to ${newStatus} successfully`)
+        
+        // Then refresh from API to ensure data consistency
+        setTimeout(async () => {
+            await fetchCoupons(currentPage.value)
+        }, 1000)
+        
+    } catch (error) {
+        console.error('Error toggling coupon status:', error)
+        
+        // Show error message
+        const errorMessage = error instanceof Error ? error.message : 'Failed to toggle coupon status'
+        alert(`Error: ${errorMessage}`)
+        
+        // Refresh the current page to restore correct state if there was an error
+        await fetchCoupons(currentPage.value)
+    }
+}
+
+// Edit coupon function (placeholder)
+const editCoupon = (coupon: Coupon) => {
+    console.log('Edit coupon:', coupon)
+    alert(`Edit functionality for "${coupon.coupon_code}" - Coming soon!`)
+}
+
+// Delete coupon function
+const deleteCoupon = async (coupon: Coupon) => {
+    console.log('Delete coupon:', coupon)
+    
+    // Show confirmation dialog
+    if (!confirm(`Are you sure you want to delete "${coupon.coupon_code}"?`)) {
+        return
+    }
+
+    try {
+        // Check authentication first
+        if (!requireAuth(redirectToLogin)) {
+            return
+        }
+
+        const response = await fetch(`http://127.0.0.1:8000/api/coupon/${coupon.coupon_id}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        })
+
+        if (!response.ok) {
+            const errorData = await response.json()
+            
+            // Handle authentication errors
+            if (handleAuthError(response.status, redirectToLogin)) {
+                return
+            }
+            
+            throw new Error(errorData.message || 'Failed to delete coupon')
+        }
+        
+        // Immediately remove the coupon from the local array to update UI instantly
+        coupons.value = coupons.value.filter(c => c.coupon_id !== coupon.coupon_id)
+        
+        // Update total count
+        totalCoupons.value = Math.max(0, totalCoupons.value - 1)
+        
+        // Force Vue to update the table immediately
+        tableKey.value++
+        await nextTick()
+        
+        // Show success message
+        alert(`Coupon "${coupon.coupon_code}" has been deleted successfully!`)
+        
+        // Then refresh from API to ensure data consistency
+        await fetchCoupons(currentPage.value)
+        
+        // If current page is now empty and we're not on page 1, go to previous page
+        if (coupons.value.length === 0 && currentPage.value > 1) {
+            await fetchCoupons(currentPage.value - 1)
+        }
+    } catch (error) {
+        console.error('Error deleting coupon:', error)
+        
+        // Show error message
+        const errorMessage = error instanceof Error ? error.message : 'Failed to delete coupon'
+        alert(`Error: ${errorMessage}`)
+    }
 }
 </script>
 
@@ -491,5 +925,35 @@ button[class*="px-3 py-1"]:hover {
 /* Orange percentage styling */
 .text-orange-600 {
     color: #ea580c;
+}
+
+/* Menu Styling */
+:deep(.p-menu) {
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    min-width: 180px;
+}
+
+:deep(.p-menu .p-menuitem-link) {
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    color: #374151;
+    transition: all 0.2s ease;
+}
+
+:deep(.p-menu .p-menuitem-link:hover) {
+    background: #f9fafb;
+    color: #111827;
+}
+
+:deep(.p-menu .p-menuitem-icon) {
+    color: #6b7280;
+    margin-right: 0.5rem;
+}
+
+:deep(.p-menu .p-separator) {
+    margin: 0.25rem 0;
+    border-top: 1px solid #e5e7eb;
 }
 </style>

@@ -11,20 +11,48 @@ class CouponController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function getAllCoupon()
+    public function getAllCoupon(Request $request)
     {
         $user = auth()->user();
         $userId = $user->user_id;
 
-        if(!$user && !auth()->user()->isAdmin()){
+
+        if(!$user || !auth()->user()->isAdmin()){
             return response()->json(['message' => 'Unauthorized'], 401);
         }
-        
-        $coupons = DB::select("SELECT * FROM coupon");
 
-        return $coupons ? response()->json([$coupons], 200)
-                        : response()->json(['message' => 'Not Found'], 404);
-         
+        $page = $request->input('page', 1);
+        $perPage = 10;
+        $offset = ($page - 1) * $perPage;
+
+        $totalCount = DB::selectOne("SELECT COUNT(*) as total FROM coupon")->total;
+
+        $coupons = DB::select("SELECT * FROM coupon ORDER BY created_at DESC LIMIT ? OFFSET ?", [$perPage, $offset]);
+
+        // Calculate pagination info
+        $totalPages = ceil($totalCount / $perPage);
+        $hasNextPage = $page < $totalPages;
+        $hasPreviousPage = $page > 1;
+
+        // Build the complete response structure
+        $responseData = [
+            'data' => $coupons,
+            'total' => $totalCount,
+            'count' => count($coupons),
+            'last_page' => $totalPages,
+            'pagination' => [
+                'current_page' => (int)$page,
+                'per_page' => $perPage,
+                'total' => $totalCount,
+                'total_pages' => $totalPages,
+                'has_next_page' => $hasNextPage,
+                'has_previous_page' => $hasPreviousPage,
+                'next_page' => $hasNextPage ? $page + 1 : null,
+                'previous_page' => $hasPreviousPage ? $page - 1 : null
+            ]
+        ];
+
+        return response()->json($responseData, 200);
     }
 
     /**
@@ -84,8 +112,8 @@ class CouponController extends Controller
             return response()->json(['message' => 'Unauthorize'], 401);
         }
 
-        $specificCoupon = DB::selectOne("SELECT * FROM coupon WHERE coupon_id = ?", $coupon_id);
-        return $specificCoupon ? response()->json($sepcificCoupon, 200)
+        $specificCoupon = DB::selectOne("SELECT * FROM coupon WHERE coupon_id = ?", [$coupon_id]);
+        return $specificCoupon ? response()->json($specificCoupon, 200)
                                : response()->json(['message' => 'Coupon Not Found'], 404);
 
     }
@@ -96,14 +124,14 @@ class CouponController extends Controller
     public function editCoupon(Request $request, $coupon_id)
     {
         $user = auth()->user();
-        $userId = $user()->user_id;
+        $userId = $user->user_id;
 
         if(!$user && !auth()->user()->isAdmin()){
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
         $validation = Validator::make($request->all(), [
-            'coupon_code' => 'required|string|max:100|unique:coupon,coupon_code',
+            'coupon_code' => 'required|string|max:100',
             'by_percent' => 'nullable|numeric|min:0|max:100',
             'by_currency' => 'nullable|numeric|min:0|max:9999999.99',
             'expired_date' => 'required|date|after:today',
@@ -115,6 +143,31 @@ class CouponController extends Controller
             return response()->json(['message' => 'validation failed',
                                      'error' => $validation->errors()], 422);
         }
+
+        $rowsAffected = DB::update("UPDATE coupon SET coupon_code = ?, by_percent = ?, by_currency = ?, expired_date = ?, status = ?, description = ?, updated_at = ? WHERE coupon_id = ?", [
+                
+            $request->input('coupon_code'),
+            $request->input('by_percent'),
+            $request->input('by_currency'),
+            $request->input('expired_date'),
+            $request->input('status'),
+            $request->input('description'),
+            now(),
+            $coupon_id
+        ]);
+
+        if($rowsAffected === 0){
+            return response()->json(['message' => 'Coupon not Found'], 404);
+        }
+
+        $updatedCoupon = DB::selectOne("SELECT * FROM coupon WHERE coupon_id = ?", [$coupon_id]);
+        return response()->json(['coupon_code' => $updatedCoupon->coupon_code,
+                                 'by_percent' => $updatedCoupon->by_percent,
+                                 'by_currency' => $updatedCoupon->by_currency,
+                                 'expired_date' => $updatedCoupon->expired_date,
+                                 'status' => $updatedCoupon->status,
+                                 'description' => $updatedCoupon->description,
+                                 'updated_at' => $updatedCoupon->updated_at], 200); 
     }
 
     /**
@@ -129,8 +182,34 @@ class CouponController extends Controller
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
-        $deleteId = DB::delete("DELETE FROM coupon WHERE coupon_id = ?", $coupon_id);
+        $deleteId = DB::delete("DELETE FROM coupon WHERE coupon_id = ?", [$coupon_id]);
         return $deleteId ? response()->json(['message' => 'Deleted Successsfully'], 200)
                          : response()->json(['message' => 'Failed to delete'], 500);
+    }
+
+
+    public function toggleCoupon($coupon_id){
+        $user = auth()->user();
+        $userId = $user->user_id;
+
+        if(!$user && auth()->user()->isAdmin()){
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $categoryStatus = DB::selectOne("SELECT status FROM coupon WHERE coupon_id =?", [$coupon_id]);
+
+        $newStatus = ($categoryStatus->status === 'active') ? 'inactive' : 'active';
+
+        $affectedRow = DB::update("UPDATE coupon SET status = ? WHERE coupon_id = ?", [
+            $newStatus,
+            $coupon_id
+        ]);
+
+        if($affectedRow === 0){
+            return reponse()->json(['message' => 'No changes made or no coupon found'], 404);
+        }
+
+        $selectStatus = DB::selectOne("SELECT * FROM coupon WHERE coupon_id = ?", [$coupon_id]);
+        return response()->json([$selectStatus], 200);
     }
 }

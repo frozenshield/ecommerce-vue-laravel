@@ -66,6 +66,14 @@
                 </template>
             </Column>
             
+            <Column field="category" header="Category" class="text-left">
+                <template #body="slotProps">
+                    <span class="text-blue-600 text-sm font-medium">
+                        {{ slotProps.data.category || 'Uncategorized' }}
+                    </span>
+                </template>
+            </Column>
+            
             <Column field="product_description" header="Description" class="text-left">
                 <template #body="slotProps">
                     <span class="text-gray-500 text-sm">{{ 
@@ -80,7 +88,7 @@
             
             <Column field="product_price" header="Price" class="text-left">
                 <template #body="slotProps">
-                    <span class="text-gray-900 text-sm font-semibold">${{ slotProps.data.product_price }}</span>
+                    <span class="text-gray-900 text-sm font-semibold">PhP{{ slotProps.data.product_price }}</span>
                 </template>
             </Column>
             
@@ -307,6 +315,7 @@ interface Product {
     product_description: string | null
     product_price: number
     product_stock: number
+    category?: string
     image_url: string | null
     img_url: string | null
     created_at: string
@@ -322,6 +331,7 @@ const allProducts: Product[] = [
         product_description: 'Premium quality leather duffle bag perfect for travel and everyday use. Features multiple compartments and durable construction.',
         product_price: 125.30,
         product_stock: 15,
+        category: 'Fashion',
         image_url: '/images/products/product05.png',
         img_url: null,
         created_at: '2024-12-25T10:30:00Z'
@@ -332,6 +342,7 @@ const allProducts: Product[] = [
         product_description: 'High-quality wireless headphones with noise cancellation and premium sound quality for gaming.',
         product_price: 89.99,
         product_stock: 0,
+        category: 'Electronics',
         image_url: '/images/products/headphone1.png',
         img_url: null,
         created_at: '2024-12-24T14:15:00Z'
@@ -342,6 +353,7 @@ const allProducts: Product[] = [
         product_description: 'Protective case for smartphones with shock absorption and wireless charging compatibility.',
         product_price: 24.99,
         product_stock: 50,
+        category: 'Accessories',
         image_url: '/images/products/phone1.png',
         img_url: null,
         created_at: '2024-12-23T09:45:00Z'
@@ -352,6 +364,7 @@ const allProducts: Product[] = [
         product_description: 'Compact portable speaker with excellent sound quality and long battery life.',
         product_price: 67.50,
         product_stock: 8,
+        category: 'Electronics',
         image_url: '/images/products/accessory1.png',
         img_url: null,
         created_at: '2024-12-22T16:20:00Z'
@@ -362,6 +375,7 @@ const allProducts: Product[] = [
         product_description: null,
         product_price: 45.00,
         product_stock: 25,
+        category: 'Gaming',
         image_url: '/images/products/console1.png',
         img_url: null,
         created_at: '2024-12-21T11:30:00Z'
@@ -372,6 +386,7 @@ const allProducts: Product[] = [
         product_description: 'Ergonomic wireless mouse with precision tracking and long battery life.',
         product_price: 32.99,
         product_stock: 40,
+        category: 'Computer',
         image_url: '/images/products/accessory2.png',
         img_url: null,
         created_at: '2024-12-20T08:15:00Z'
@@ -382,6 +397,7 @@ const allProducts: Product[] = [
         product_description: 'Multi-port USB-C hub with HDMI, USB 3.0, and power delivery support.',
         product_price: 49.99,
         product_stock: 12,
+        category: 'Computer',
         image_url: '/images/products/accessory3.png',
         img_url: null,
         created_at: '2024-12-19T13:45:00Z'
@@ -392,6 +408,7 @@ const allProducts: Product[] = [
         product_description: 'Premium mechanical keyboard with RGB backlighting and custom switches.',
         product_price: 129.99,
         product_stock: 18,
+        category: 'Computer',
         image_url: '/images/products/accessory4.png',
         img_url: null,
         created_at: '2024-12-18T10:20:00Z'
@@ -402,6 +419,7 @@ const allProducts: Product[] = [
         product_description: 'Premium wireless earbuds with active noise cancellation and premium sound.',
         product_price: 199.99,
         product_stock: 0,
+        category: 'Electronics',
         image_url: '/images/products/headphone2.png',
         img_url: null,
         created_at: '2024-12-17T15:30:00Z'
@@ -412,6 +430,7 @@ const allProducts: Product[] = [
         product_description: 'Advanced fitness tracker with heart rate monitoring and GPS.',
         product_price: 89.99,
         product_stock: 35,
+        category: 'Health',
         image_url: '/images/products/accessory5.png',
         img_url: null,
         created_at: '2024-12-16T09:10:00Z'
@@ -422,6 +441,7 @@ const allProducts: Product[] = [
         product_description: 'High-capacity power bank with fast charging and multiple ports.',
         product_price: 39.99,
         product_stock: 60,
+        category: 'Electronics',
         image_url: '/images/products/accessory6.png',
         img_url: null,
         created_at: '2024-12-15T14:25:00Z'
@@ -432,6 +452,7 @@ const allProducts: Product[] = [
         product_description: 'Professional HD webcam with auto-focus and noise reduction.',
         product_price: 79.99,
         product_stock: 22,
+        category: 'Computer',
         image_url: '/images/products/accessory7.png',
         img_url: null,
         created_at: '2024-12-14T11:40:00Z'
@@ -563,5 +584,10 @@ const allProducts: Product[] = [
 :deep(.p-paginator .p-paginator-last:hover) {
     background: #f3f4f6;
     color: #374151;
+}
+
+/* Blue category styling */
+.text-blue-600 {
+    color: #2563eb;
 }
 </style>
